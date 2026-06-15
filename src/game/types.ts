@@ -21,6 +21,6 @@ export interface GameState {
   sixCount: number;           // consecutive sixes by current player
   awaitingMove: boolean;      // dice rolled, waiting for token move
   winners: number[];          // seat indexes that finished, in finish order
-  lastMove?: { seat: number; token: number; from: number; to: number; capture?: { seat: number; token: number }[] } | null;
+  lastMove?: { seat: number; token: number; from: number; to: number; capture?: { seat: number; token: number }[]; timestamp?: number } | null;
   turnStartTime: number;      // timestamp when the current turn or action phase started
 }

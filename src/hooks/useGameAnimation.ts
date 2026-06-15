@@ -32,8 +32,8 @@ export function useGameAnimation(game: GameState | null, onAnimationComplete?: (
 
     const prevGame = prevGameRef.current;
     
-    // Check if there's a new move to animate.
-    const isNewMove = game.lastMove && JSON.stringify(game.lastMove) !== JSON.stringify(prevGame.lastMove);
+    // Check if there's a new move to animate by comparing the unique timestamp.
+    const isNewMove = !!game.lastMove && (!prevGame.lastMove || game.lastMove.timestamp !== prevGame.lastMove.timestamp);
     
     if (isNewMove) {
       if (timerRef.current) window.clearTimeout(timerRef.current);
