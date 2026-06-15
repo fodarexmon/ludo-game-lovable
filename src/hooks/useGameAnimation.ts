@@ -8,6 +8,14 @@ export function useGameAnimation(game: GameState | null, onAnimationComplete?: (
   const [animatedGame, setAnimatedGame] = useState<GameState | null>(game);
   const animatingRef = useRef(false);
   const prevGameRef = useRef<GameState | null>(null);
+  const timerRef = useRef<number | null>(null);
+
+  // Clear timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) window.clearTimeout(timerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (!game) {
@@ -25,12 +33,11 @@ export function useGameAnimation(game: GameState | null, onAnimationComplete?: (
     const prevGame = prevGameRef.current;
     
     // Check if there's a new move to animate.
-    // Use JSON.stringify to prevent false positives when engine deep-clones state.
     const isNewMove = game.lastMove && JSON.stringify(game.lastMove) !== JSON.stringify(prevGame.lastMove);
     
-    let timer: number;
-
     if (isNewMove) {
+      if (timerRef.current) window.clearTimeout(timerRef.current);
+
       const { seat, token, from, to, capture } = game.lastMove!;
       
       let steps: number[] = [];
@@ -78,7 +85,7 @@ export function useGameAnimation(game: GameState | null, onAnimationComplete?: (
 
           setAnimatedGame(intermediateState);
           stepIdx++;
-          timer = window.setTimeout(runStep, 250); // 250ms per square for slightly smoother pace
+          timerRef.current = window.setTimeout(runStep, 250);
         } else {
           animatingRef.current = false;
           
@@ -92,17 +99,13 @@ export function useGameAnimation(game: GameState | null, onAnimationComplete?: (
       };
 
       runStep();
+      prevGameRef.current = game;
     } else {
       if (!animatingRef.current) {
         setAnimatedGame(game);
+        prevGameRef.current = game;
       }
     }
-
-    prevGameRef.current = game;
-
-    return () => {
-      if (timer) clearTimeout(timer);
-    };
   }, [game, onAnimationComplete]);
 
   return { animatedGame: animatingRef.current ? animatedGame : game, isAnimating: animatingRef.current };
