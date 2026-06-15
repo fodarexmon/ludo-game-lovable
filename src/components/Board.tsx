@@ -118,13 +118,20 @@ export function Board({ state, onTokenClick }: { state: GameState; onTokenClick?
             const [sx, sy] = BASE_AREA[p.color].spots[ti];
             cx = sx * CELL; cy = sy * CELL;
           } else if (d === 57) {
-            // pile in center triangle of own color, slight offset
-            const center = BASE_AREA[p.color].cx; // unused
-            void center;
-            // 4 spots near triangle tip
-            const angle = (ti / 4) * Math.PI * 2;
-            cx = 7.5 * CELL + Math.cos(angle) * CELL * 0.35;
-            cy = 7.5 * CELL + Math.sin(angle) * CELL * 0.35;
+            // pile in center triangle of own color
+            const FINISHED_CENTER: Record<string, [number, number]> = {
+              red: [6.8, 7.5],
+              green: [7.5, 6.8],
+              yellow: [8.2, 7.5],
+              blue: [7.5, 8.2],
+            };
+            const [fcx, fcy] = FINISHED_CENTER[p.color];
+            
+            // 4 spots tightly packed inside the triangle
+            const angle = (ti / 4) * Math.PI * 2 + (Math.PI / 4); // offset angle slightly for better packing
+            const radius = 0.22;
+            cx = (fcx + Math.cos(angle) * radius) * CELL;
+            cy = (fcy + Math.sin(angle) * radius) * CELL;
           } else {
             const [col, row] = cellFor(p.color, d)!;
             cx = (col + 0.5) * CELL; cy = (row + 0.5) * CELL;
