@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { auth, db } from "@/integrations/firebase/client";
 import { signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
-import { saveProfile } from "@/lib/profile";
+import { loadProfile, saveProfile } from "@/lib/profile";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({ meta: [{ title: "Sign in — Ludo Star" }] }),
@@ -35,11 +35,12 @@ function AuthPage() {
       
       let profileData;
       if (!profSnap.exists()) {
+        const local = loadProfile();
         profileData = {
           id: user.uid,
-          display_name: user.displayName || "Player",
-          country: "US",
-          avatar_id: user.photoURL || "a1",
+          display_name: local.displayName !== "Player" ? local.displayName : (user.displayName || "Player"),
+          country: local.country || "US",
+          avatar_id: local.avatarId !== "a1" ? local.avatarId : (user.photoURL || "a1"),
           stats: { gamesPlayed: 0, wins: 0, totalPoints: 0 }
         };
         await setDoc(profRef, profileData);
