@@ -31,13 +31,34 @@ export function Board({ state, onTokenClick }: { state: GameState; onTokenClick?
         ["green", 9, 0],
         ["yellow", 9, 9],
         ["blue", 0, 9],
-      ] as const).map(([c, x, y]) => (
-        <g key={c}>
-          <rect x={x * CELL} y={y * CELL} width={6 * CELL} height={6 * CELL} fill={COLOR_HEX[c]} />
-          <rect x={(x + 1) * CELL} y={(y + 1) * CELL} width={4 * CELL} height={4 * CELL} fill="#fff" />
-          <rect x={(x + 1.4) * CELL} y={(y + 1.4) * CELL} width={3.2 * CELL} height={3.2 * CELL} fill={COLOR_LIGHT[c]} rx={6} />
-        </g>
-      ))}
+      ] as const).map(([c, x, y]) => {
+        const player = state.players.find(p => p.color === c);
+        // y === 0 is top row (Red, Green), y === 9 is bottom row (Blue, Yellow)
+        const textY = y === 0 ? (y + 0.7) * CELL : (y + 5.7) * CELL;
+        return (
+          <g key={c}>
+            <rect x={x * CELL} y={y * CELL} width={6 * CELL} height={6 * CELL} fill={COLOR_HEX[c]} />
+            <rect x={(x + 1) * CELL} y={(y + 1) * CELL} width={4 * CELL} height={4 * CELL} fill="#fff" />
+            <rect x={(x + 1.4) * CELL} y={(y + 1.4) * CELL} width={3.2 * CELL} height={3.2 * CELL} fill={COLOR_LIGHT[c]} rx={6} />
+            {player && (
+              <text 
+                x={(x + 3) * CELL} 
+                y={textY} 
+                textAnchor="middle" 
+                fill="#fff" 
+                fontSize={CELL * 0.8} 
+                fontWeight="900" 
+                stroke="#000" 
+                strokeWidth="2" 
+                paintOrder="stroke"
+                className="drop-shadow-sm"
+              >
+                {player.name}
+              </text>
+            )}
+          </g>
+        );
+      })}
 
       {/* 52 track squares — draw white grid in arms */}
       {Array.from({ length: 15 }).flatMap((_, row) =>
