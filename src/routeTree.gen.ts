@@ -13,8 +13,8 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as LeaderboardRouteImport } from './routes/leaderboard'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as PlayOnlineRouteImport } from './routes/play.online'
 import { Route as PlayOfflineRouteImport } from './routes/play.offline'
+import { Route as PlayOnlineIndexRouteImport } from './routes/play.online.index'
 import { Route as PlayOnlineCodeRouteImport } from './routes/play.online.$code'
 
 const SettingsRoute = SettingsRouteImport.update({
@@ -37,20 +37,20 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PlayOnlineRoute = PlayOnlineRouteImport.update({
-  id: '/play/online',
-  path: '/play/online',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const PlayOfflineRoute = PlayOfflineRouteImport.update({
   id: '/play/offline',
   path: '/play/offline',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PlayOnlineIndexRoute = PlayOnlineIndexRouteImport.update({
+  id: '/play/online/',
+  path: '/play/online/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PlayOnlineCodeRoute = PlayOnlineCodeRouteImport.update({
-  id: '/$code',
-  path: '/$code',
-  getParentRoute: () => PlayOnlineRoute,
+  id: '/play/online/$code',
+  path: '/play/online/$code',
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -59,8 +59,8 @@ export interface FileRoutesByFullPath {
   '/leaderboard': typeof LeaderboardRoute
   '/settings': typeof SettingsRoute
   '/play/offline': typeof PlayOfflineRoute
-  '/play/online': typeof PlayOnlineRouteWithChildren
   '/play/online/$code': typeof PlayOnlineCodeRoute
+  '/play/online/': typeof PlayOnlineIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -68,8 +68,8 @@ export interface FileRoutesByTo {
   '/leaderboard': typeof LeaderboardRoute
   '/settings': typeof SettingsRoute
   '/play/offline': typeof PlayOfflineRoute
-  '/play/online': typeof PlayOnlineRouteWithChildren
   '/play/online/$code': typeof PlayOnlineCodeRoute
+  '/play/online': typeof PlayOnlineIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -78,8 +78,8 @@ export interface FileRoutesById {
   '/leaderboard': typeof LeaderboardRoute
   '/settings': typeof SettingsRoute
   '/play/offline': typeof PlayOfflineRoute
-  '/play/online': typeof PlayOnlineRouteWithChildren
   '/play/online/$code': typeof PlayOnlineCodeRoute
+  '/play/online/': typeof PlayOnlineIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -89,8 +89,8 @@ export interface FileRouteTypes {
     | '/leaderboard'
     | '/settings'
     | '/play/offline'
-    | '/play/online'
     | '/play/online/$code'
+    | '/play/online/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -98,8 +98,8 @@ export interface FileRouteTypes {
     | '/leaderboard'
     | '/settings'
     | '/play/offline'
-    | '/play/online'
     | '/play/online/$code'
+    | '/play/online'
   id:
     | '__root__'
     | '/'
@@ -107,8 +107,8 @@ export interface FileRouteTypes {
     | '/leaderboard'
     | '/settings'
     | '/play/offline'
-    | '/play/online'
     | '/play/online/$code'
+    | '/play/online/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -117,7 +117,8 @@ export interface RootRouteChildren {
   LeaderboardRoute: typeof LeaderboardRoute
   SettingsRoute: typeof SettingsRoute
   PlayOfflineRoute: typeof PlayOfflineRoute
-  PlayOnlineRoute: typeof PlayOnlineRouteWithChildren
+  PlayOnlineCodeRoute: typeof PlayOnlineCodeRoute
+  PlayOnlineIndexRoute: typeof PlayOnlineIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -150,13 +151,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/play/online': {
-      id: '/play/online'
-      path: '/play/online'
-      fullPath: '/play/online'
-      preLoaderRoute: typeof PlayOnlineRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/play/offline': {
       id: '/play/offline'
       path: '/play/offline'
@@ -164,27 +158,22 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlayOfflineRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/play/online/': {
+      id: '/play/online/'
+      path: '/play/online'
+      fullPath: '/play/online/'
+      preLoaderRoute: typeof PlayOnlineIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/play/online/$code': {
       id: '/play/online/$code'
-      path: '/$code'
+      path: '/play/online/$code'
       fullPath: '/play/online/$code'
       preLoaderRoute: typeof PlayOnlineCodeRouteImport
-      parentRoute: typeof PlayOnlineRoute
+      parentRoute: typeof rootRouteImport
     }
   }
 }
-
-interface PlayOnlineRouteChildren {
-  PlayOnlineCodeRoute: typeof PlayOnlineCodeRoute
-}
-
-const PlayOnlineRouteChildren: PlayOnlineRouteChildren = {
-  PlayOnlineCodeRoute: PlayOnlineCodeRoute,
-}
-
-const PlayOnlineRouteWithChildren = PlayOnlineRoute._addFileChildren(
-  PlayOnlineRouteChildren,
-)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -192,7 +181,8 @@ const rootRouteChildren: RootRouteChildren = {
   LeaderboardRoute: LeaderboardRoute,
   SettingsRoute: SettingsRoute,
   PlayOfflineRoute: PlayOfflineRoute,
-  PlayOnlineRoute: PlayOnlineRouteWithChildren,
+  PlayOnlineCodeRoute: PlayOnlineCodeRoute,
+  PlayOnlineIndexRoute: PlayOnlineIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
