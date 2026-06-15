@@ -2,9 +2,11 @@ import { FINISHED, HOME_COLUMN, HOME_ENTER, SAFE_SQUARES, START_INDEX, TRACK, ty
 import type { GameState, Player } from "./types";
 
 export function createGame(players: Player[]): GameState {
+  const tokens: Record<number, number[]> = {};
+  players.forEach((_, i) => tokens[i] = [0, 0, 0, 0]);
   return {
     players,
-    tokens: players.map(() => [0, 0, 0, 0]),
+    tokens,
     turn: 0,
     dice: null,
     sixCount: 0,

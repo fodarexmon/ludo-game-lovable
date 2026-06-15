@@ -15,7 +15,7 @@ export interface Player {
 export interface GameState {
   players: Player[];          // 2..4 in seat order
   // tokens[seat] = [d0, d1, d2, d3] each 0..57 per encoding in constants.ts
-  tokens: number[][];
+  tokens: Record<number, number[]>;
   turn: number;               // current seat index (into players)
   dice: number | null;        // current roll, null = needs to roll
   sixCount: number;           // consecutive sixes by current player
