@@ -150,11 +150,21 @@ function RoomPage() {
     if (!game || mySeat !== game.turn || rolling) return;
     setRolling(true);
     playRollSound();
+
     setTimeout(async () => {
       const d = rollDice();
-      const next = recordRoll(game, d);
       setRolling(false);
-      await handleStateChange(next);
+      const next = recordRoll(game, d);
+      
+      if (next.dice === null) {
+        const intermediate = { ...game, dice: d, awaitingMove: false, sixCount: next.sixCount };
+        await handleStateChange(intermediate);
+        setTimeout(async () => {
+          await handleStateChange(next);
+        }, 1200);
+      } else {
+        await handleStateChange(next);
+      }
     }, 600);
   }
   async function doMove(_seat: number, tokenIdx: number) {

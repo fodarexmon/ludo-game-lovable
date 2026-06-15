@@ -104,7 +104,14 @@ function Match({ game, setGame, onExit }: { game: GameState; setGame: (g: GameSt
     setTimeout(() => {
       const d = rollDice();
       setRolling(false);
-      setGame(recordRoll(game, d));
+      const nextState = recordRoll(game, d);
+      
+      if (nextState.dice === null) {
+        setGame({ ...game, dice: d, awaitingMove: false, sixCount: nextState.sixCount });
+        setTimeout(() => setGame(nextState), 1200);
+      } else {
+        setGame(nextState);
+      }
     }, 600);
   }
   function doTokenMove(_seat: number, tokenIdx: number) {
@@ -129,7 +136,14 @@ function Match({ game, setGame, onExit }: { game: GameState; setGame: (g: GameSt
         aiTimer.current = window.setTimeout(() => {
           const d = rollDice();
           setRolling(false);
-          setGame(recordRoll(game, d));
+          const nextState = recordRoll(game, d);
+          
+          if (nextState.dice === null) {
+            setGame({ ...game, dice: d, awaitingMove: false, sixCount: nextState.sixCount });
+            aiTimer.current = window.setTimeout(() => setGame(nextState), 1200);
+          } else {
+            setGame(nextState);
+          }
         }, 600);
       }, 600);
     } else if (game.awaitingMove && game.dice) {
