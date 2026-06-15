@@ -1,7 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { auth } from "@/integrations/firebase/client";
+import { auth, db } from "@/integrations/firebase/client";
 import { signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "firebase/auth";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { saveProfile } from "@/lib/profile";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({ meta: [{ title: "Sign in — Ludo Star" }] }),
@@ -25,7 +27,33 @@ function AuthPage() {
     setLoading(true);
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      const cred = await signInWithPopup(auth, provider);
+      const user = cred.user;
+      
+      const profRef = doc(db, "profiles", user.uid);
+      const profSnap = await getDoc(profRef);
+      
+      let profileData;
+      if (!profSnap.exists()) {
+        profileData = {
+          id: user.uid,
+          display_name: user.displayName || "Player",
+          country: "US",
+          avatar_id: user.photoURL || "a1",
+          stats: { gamesPlayed: 0, wins: 0, totalPoints: 0 }
+        };
+        await setDoc(profRef, profileData);
+      } else {
+        profileData = profSnap.data();
+      }
+      
+      // Sync to local storage
+      saveProfile({
+        displayName: profileData.display_name,
+        country: profileData.country,
+        avatarId: profileData.avatar_id
+      });
+
       nav({ to: "/play/online" });
     } catch (error: any) {
       setErr(error?.message ?? "Sign-in failed");

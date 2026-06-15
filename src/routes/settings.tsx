@@ -4,14 +4,14 @@ import { loadProfile, saveProfile } from "@/lib/profile";
 import { AvatarPicker } from "@/components/Avatar";
 import { COUNTRIES } from "@/data/countries";
 import { auth, db } from "@/integrations/firebase/client";
-import { onAuthStateChanged } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
     meta: [
-      { title: "Settings — Ludo Star" },
-      { name: "description", content: "Set your display name, country, and avatar." },
+      { title: "Settings & Profile — Ludo Star" },
+      { name: "description", content: "Manage your profile, stats, and settings." },
     ],
   }),
   component: SettingsPage,
@@ -25,9 +25,28 @@ function SettingsPage() {
   const [avatarId, setAvatarId] = useState(initial.avatarId);
   const [saved, setSaved] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [stats, setStats] = useState<{ gamesPlayed: number, wins: number, totalPoints: number } | null>(null);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (user) => setUserId(user?.uid ?? null));
+    const unsub = onAuthStateChanged(auth, async (user) => {
+      setUserId(user?.uid ?? null);
+      if (user?.uid) {
+        const profSnap = await getDoc(doc(db, "profiles", user.uid));
+        if (profSnap.exists()) {
+          const data = profSnap.data();
+          setName(data.display_name || "Player");
+          setCountry(data.country || "US");
+          setAvatarId(data.avatar_id || "a1");
+          if (data.stats) setStats(data.stats);
+          
+          saveProfile({
+            displayName: data.display_name || "Player",
+            country: data.country || "US",
+            avatarId: data.avatar_id || "a1",
+          });
+        }
+      }
+    });
     return () => unsub();
   }, []);
 
@@ -41,6 +60,11 @@ function SettingsPage() {
     }
     setSaved(true);
     setTimeout(() => setSaved(false), 1600);
+  }
+
+  async function handleSignOut() {
+    await signOut(auth);
+    setStats(null);
   }
 
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -57,7 +81,6 @@ function SettingsPage() {
         let width = img.width;
         let height = img.height;
 
-        // Crop to square before resizing for perfect avatars
         const size = Math.min(width, height);
         const offsetX = (width - size) / 2;
         const offsetY = (height - size) / 2;
@@ -67,14 +90,13 @@ function SettingsPage() {
         const ctx = canvas.getContext("2d");
         if (ctx) {
           ctx.drawImage(img, offsetX, offsetY, size, size, 0, 0, MAX_WIDTH, MAX_HEIGHT);
-          const dataUrl = canvas.toDataURL("image/webp", 0.6); // heavily compressed
+          const dataUrl = canvas.toDataURL("image/webp", 0.6);
           setAvatarId(dataUrl);
         }
       };
       if (event.target?.result) img.src = event.target.result as string;
     };
     reader.readAsDataURL(file);
-    // Reset input so the same file can be selected again
     e.target.value = "";
   }
 
@@ -82,7 +104,25 @@ function SettingsPage() {
     <div className="min-h-screen p-6">
       <div className="mx-auto max-w-lg">
         <Link to="/" className="btn-ghost mb-4 inline-flex">← Back</Link>
-        <h1 className="mb-6 text-3xl font-bold">Settings</h1>
+        <h1 className="mb-6 text-3xl font-bold">Settings & Profile</h1>
+        
+        {userId && stats && (
+          <div className="panel mb-6 flex gap-4 text-center">
+            <div className="flex-1 bg-secondary rounded-lg p-3">
+              <div className="text-2xl font-black text-primary">{stats.gamesPlayed}</div>
+              <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mt-1">Games</div>
+            </div>
+            <div className="flex-1 bg-secondary rounded-lg p-3">
+              <div className="text-2xl font-black text-ludo-green">{stats.wins}</div>
+              <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mt-1">Wins</div>
+            </div>
+            <div className="flex-1 bg-secondary rounded-lg p-3">
+              <div className="text-2xl font-black text-ludo-yellow">{stats.totalPoints}</div>
+              <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mt-1">Points</div>
+            </div>
+          </div>
+        )}
+
         <div className="panel space-y-5">
           <div>
             <label className="mb-1 block text-sm font-medium">Display name</label>
@@ -120,8 +160,19 @@ function SettingsPage() {
             
             <AvatarPicker value={avatarId} onChange={setAvatarId} />
           </div>
-          <button onClick={save} className="btn-game w-full">{saved ? "✓ Saved" : "Save"}</button>
-          {userId && <p className="text-xs text-muted-foreground">Signed in — changes also sync to your online profile.</p>}
+          <button onClick={save} className="btn-game w-full">{saved ? "✓ Saved" : "Save Changes"}</button>
+          
+          {userId ? (
+            <div className="pt-4 mt-2 border-t border-border flex flex-col gap-3">
+              <p className="text-xs text-muted-foreground text-center">Signed in to Google. Your profile and stats are synced online.</p>
+              <button onClick={handleSignOut} className="btn-ghost w-full !text-destructive border border-destructive/20 hover:bg-destructive/10">Sign Out</button>
+            </div>
+          ) : (
+            <div className="pt-4 mt-2 border-t border-border flex flex-col gap-3">
+              <p className="text-xs text-muted-foreground text-center">Not signed in. Sign in to play online and sync your stats.</p>
+              <Link to="/auth" className="btn-ghost w-full">Sign In with Google</Link>
+            </div>
+          )}
         </div>
       </div>
     </div>
