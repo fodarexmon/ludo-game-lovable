@@ -34,16 +34,21 @@ function SettingsPage() {
         const profSnap = await getDoc(doc(db, "profiles", user.uid));
         if (profSnap.exists()) {
           const data = profSnap.data();
-          setName(data.display_name || "Player");
+          setName(data.display_name || user.displayName || "Player");
           setCountry(data.country || "US");
-          setAvatarId(data.avatar_id || "a1");
-          if (data.stats) setStats(data.stats);
+          setAvatarId(data.avatar_id || user.photoURL || "a1");
+          setStats(data.stats || { gamesPlayed: 0, wins: 0, totalPoints: 0 });
           
           saveProfile({
-            displayName: data.display_name || "Player",
+            displayName: data.display_name || user.displayName || "Player",
             country: data.country || "US",
-            avatarId: data.avatar_id || "a1",
+            avatarId: data.avatar_id || user.photoURL || "a1",
           });
+        } else {
+          // Fallback if profile doesn't exist in DB yet (e.g. legacy auth)
+          setName(user.displayName || "Player");
+          setAvatarId(user.photoURL || "a1");
+          setStats({ gamesPlayed: 0, wins: 0, totalPoints: 0 });
         }
       }
     });
