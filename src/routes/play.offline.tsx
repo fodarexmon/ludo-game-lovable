@@ -96,6 +96,11 @@ function Match({ game, setGame, onExit }: { game: GameState; setGame: (g: GameSt
   const canRoll = !game.dice && !game.awaitingMove && !isGameOver && !isAnimating && !rolling;
   const finishedCount = (seat: number) => game.tokens[seat].filter((d) => d === FINISHED).length;
   const aiTimer = useRef<number | null>(null);
+  const passTimer = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => { if (passTimer.current) clearTimeout(passTimer.current); };
+  }, []);
 
   function doRoll() {
     if (!canRoll || rolling) return;
@@ -108,7 +113,7 @@ function Match({ game, setGame, onExit }: { game: GameState; setGame: (g: GameSt
       
       if (nextState.dice === null) {
         setGame({ ...game, dice: d, awaitingMove: false, sixCount: nextState.sixCount });
-        setTimeout(() => setGame(nextState), 1200);
+        passTimer.current = window.setTimeout(() => setGame(nextState), 1200);
       } else {
         setGame(nextState);
       }
@@ -140,7 +145,7 @@ function Match({ game, setGame, onExit }: { game: GameState; setGame: (g: GameSt
           
           if (nextState.dice === null) {
             setGame({ ...game, dice: d, awaitingMove: false, sixCount: nextState.sixCount });
-            aiTimer.current = window.setTimeout(() => setGame(nextState), 1200);
+            passTimer.current = window.setTimeout(() => setGame(nextState), 1200);
           } else {
             setGame(nextState);
           }
