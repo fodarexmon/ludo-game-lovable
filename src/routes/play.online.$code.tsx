@@ -8,7 +8,7 @@ import { Dice } from "@/components/Dice";
 import { PlayerCard } from "@/components/PlayerCard";
 import { Avatar } from "@/components/Avatar";
 import { COLORS, FINISHED, type Color } from "@/game/constants";
-import { applyMove, createGame, recordRoll, rollDice, gameOver } from "@/game/engine";
+import { applyMove, createGame, recordRoll, rollDice, gameOver, legalMoves } from "@/game/engine";
 import { chooseMove } from "@/game/ai";
 import type { GameState, Player } from "@/game/types";
 import { playRollSound, playMoveSound, playCaptureSound, playFinishSound, playWinSound } from "@/lib/audio";
@@ -163,7 +163,25 @@ function RoomPage() {
           await handleStateChange(next);
         }, 1200);
       } else {
-        await handleStateChange(next);
+        const moves = legalMoves(next, d);
+        let autoMoveIdx = -1;
+        if (moves.length === 1) {
+          autoMoveIdx = moves[0];
+        } else if (moves.length > 1) {
+          const positions = moves.map(t => next.tokens[next.turn][t]);
+          if (positions.every(p => p === positions[0])) autoMoveIdx = moves[0];
+        }
+
+        if (autoMoveIdx >= 0) {
+          const intermediate = { ...next, awaitingMove: false };
+          await handleStateChange(intermediate);
+          setTimeout(async () => {
+            const finalState = applyMove(next, autoMoveIdx);
+            await handleStateChange(finalState);
+          }, 600);
+        } else {
+          await handleStateChange(next);
+        }
       }
     }, 600);
   }

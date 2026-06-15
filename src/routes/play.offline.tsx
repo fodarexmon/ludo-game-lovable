@@ -5,7 +5,7 @@ import { Dice } from "@/components/Dice";
 import { PlayerCard } from "@/components/PlayerCard";
 import { Avatar } from "@/components/Avatar";
 import { COLORS, FINISHED, type Color } from "@/game/constants";
-import { applyMove, createGame, recordRoll, rollDice, gameOver } from "@/game/engine";
+import { applyMove, createGame, recordRoll, rollDice, gameOver, legalMoves } from "@/game/engine";
 import { chooseMove } from "@/game/ai";
 import type { GameState, Player, PlayerKind } from "@/game/types";
 import { loadProfile } from "@/lib/profile";
@@ -115,7 +115,23 @@ function Match({ game, setGame, onExit }: { game: GameState; setGame: (g: GameSt
         setGame({ ...game, dice: d, awaitingMove: false, sixCount: nextState.sixCount });
         passTimer.current = window.setTimeout(() => setGame(nextState), 1200);
       } else {
-        setGame(nextState);
+        const moves = legalMoves(nextState, d);
+        let autoMoveIdx = -1;
+        if (moves.length === 1) {
+          autoMoveIdx = moves[0];
+        } else if (moves.length > 1) {
+          const positions = moves.map(t => nextState.tokens[nextState.turn][t]);
+          if (positions.every(p => p === positions[0])) autoMoveIdx = moves[0];
+        }
+
+        if (autoMoveIdx >= 0) {
+          setGame({ ...nextState, awaitingMove: false });
+          passTimer.current = window.setTimeout(() => {
+            setGame(applyMove(nextState, autoMoveIdx));
+          }, 600);
+        } else {
+          setGame(nextState);
+        }
       }
     }, 600);
   }
