@@ -46,10 +46,10 @@ export const HOME_COLUMN: Record<Color, Array<[number, number]>> = {
 
 // Base areas (6x6 corners) — token rest positions inside the base (2x2).
 export const BASE_AREA: Record<Color, { cx: number; cy: number; spots: Array<[number, number]> }> = {
-  red:    { cx: 2.5, cy: 2.5, spots: [[1.3, 1.3], [3.7, 1.3], [1.3, 3.7], [3.7, 3.7]] },
-  green:  { cx: 11.5, cy: 2.5, spots: [[10.3, 1.3], [12.7, 1.3], [10.3, 3.7], [12.7, 3.7]] },
-  yellow: { cx: 11.5, cy: 11.5, spots: [[10.3, 10.3], [12.7, 10.3], [10.3, 12.7], [12.7, 12.7]] },
-  blue:   { cx: 2.5, cy: 11.5, spots: [[1.3, 10.3], [3.7, 10.3], [1.3, 12.7], [3.7, 12.7]] },
+  red:    { cx: 3.0, cy: 3.0, spots: [[2.0, 2.0], [4.0, 2.0], [2.0, 4.0], [4.0, 4.0]] },
+  green:  { cx: 12.0, cy: 3.0, spots: [[11.0, 2.0], [13.0, 2.0], [11.0, 4.0], [13.0, 4.0]] },
+  yellow: { cx: 12.0, cy: 12.0, spots: [[11.0, 11.0], [13.0, 11.0], [11.0, 13.0], [13.0, 13.0]] },
+  blue:   { cx: 3.0, cy: 12.0, spots: [[2.0, 11.0], [4.0, 11.0], [2.0, 13.0], [4.0, 13.0]] },
 };
 
 // Safe squares (track indexes): each color's start + 8 squares past it (stars).

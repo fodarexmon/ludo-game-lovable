@@ -40,6 +40,12 @@ export function Board({ state, onTokenClick }: { state: GameState; onTokenClick?
             <rect x={x * CELL} y={y * CELL} width={6 * CELL} height={6 * CELL} fill={COLOR_HEX[c]} />
             <rect x={(x + 1) * CELL} y={(y + 1) * CELL} width={4 * CELL} height={4 * CELL} fill="#fff" />
             <rect x={(x + 1.4) * CELL} y={(y + 1.4) * CELL} width={3.2 * CELL} height={3.2 * CELL} fill={COLOR_LIGHT[c]} rx={6} />
+            
+            {/* Draw the 4 empty resting circles */}
+            {BASE_AREA[c].spots.map(([sx, sy], i) => (
+              <circle key={i} cx={sx * CELL} cy={sy * CELL} r={CELL * 0.4} fill="#fff" opacity={0.6} />
+            ))}
+
             {player && (
               <text 
                 x={(x + 3) * CELL} 
