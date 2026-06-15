@@ -134,10 +134,18 @@ function RoomPage() {
       
       const newScores = { ...(room?.scores || {}) };
       const numPlayers = next.players.length;
+      
+      const getPoints = (num: number, rank: number) => {
+        if (num === 2) return rank === 0 ? 2 : 0;
+        if (num === 3) return rank === 0 ? 3 : (rank === 1 ? 1 : 0);
+        if (num === 4) return rank === 0 ? 5 : (rank === 1 ? 3 : (rank === 2 ? 1 : 0));
+        return 0;
+      };
+
       board.forEach((seat, index) => {
         const p = next.players[seat];
         if (p && p.userId) {
-          const points = Math.max(0, numPlayers - index);
+          const points = getPoints(numPlayers, index);
           newScores[p.userId] = (newScores[p.userId] || 0) + points;
         }
       });
