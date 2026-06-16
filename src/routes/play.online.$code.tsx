@@ -101,9 +101,10 @@ function RoomPage() {
 
   async function startGame() {
     if (!room || (!isHost && !room.isQuickMatch) || players.length < 2) return;
-    const gamePlayers: Player[] = players.map((p, i) => ({
-      seat: i,
-      color: COLORS[i],
+    const sortedPlayers = [...players].sort((a, b) => a.seat - b.seat);
+    const gamePlayers: Player[] = sortedPlayers.map((p) => ({
+      seat: p.seat,
+      color: COLORS[p.seat],
       name: profiles[p.user_id]?.display_name ?? "Player",
       avatarId: profiles[p.user_id]?.avatar_id ?? "a1",
       country: profiles[p.user_id]?.country,
