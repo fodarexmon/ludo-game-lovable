@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { collection, query, orderBy, limit, getDocs } from "firebase/firestore";
-import { db } from "@/integrations/firebase/client";
+import { collection, query, orderBy, limit, getDocs, getDoc, doc, where, getCountFromServer } from "firebase/firestore";
+import { auth, db } from "@/integrations/firebase/client";
+import { onAuthStateChanged } from "firebase/auth";
 import { Avatar } from "@/components/Avatar";
 
 export const Route = createFileRoute("/leaderboard")({
@@ -12,6 +13,63 @@ export const Route = createFileRoute("/leaderboard")({
 function LeaderboardPage() {
   const [leaders, setLeaders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [findingRank, setFindingRank] = useState(false);
+  const [highlightUserId, setHighlightUserId] = useState<string | null>(null);
+  const [myRankMsg, setMyRankMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    return onAuthStateChanged(auth, (user) => {
+      setUserId(user ? user.uid : null);
+    });
+  }, []);
+
+  const findMyRank = async () => {
+    if (!userId) {
+      setMyRankMsg("يجب عليك تسجيل الدخول أولاً");
+      return;
+    }
+    setFindingRank(true);
+    setMyRankMsg(null);
+    
+    const index = leaders.findIndex(l => l.id === userId);
+    if (index !== -1) {
+      setHighlightUserId(userId);
+      const el = document.getElementById(`rank-${userId}`);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setFindingRank(false);
+      return;
+    }
+
+    try {
+      const myDoc = await getDoc(doc(db, "profiles", userId));
+      if (!myDoc.exists()) {
+        setMyRankMsg("لم تلعب أي مباراة بعد!");
+        setFindingRank(false);
+        return;
+      }
+      const myPoints = myDoc.data().stats?.totalPoints || 0;
+      const q = query(collection(db, "profiles"), where("stats.totalPoints", ">", myPoints));
+      const snapshot = await getCountFromServer(q);
+      const higherCount = snapshot.data().count;
+      const rank = higherCount + 1;
+      
+      const myData = { id: myDoc.id, ...myDoc.data(), exactRank: rank };
+      setLeaders(prev => [...prev, myData]);
+      
+      setTimeout(() => {
+        setHighlightUserId(userId);
+        const el = document.getElementById(`rank-${userId}`);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
+      
+    } catch (e) {
+      console.error(e);
+      setMyRankMsg("حدث خطأ أثناء جلب الترتيب");
+    } finally {
+      setFindingRank(false);
+    }
+  };
 
   useEffect(() => {
     async function fetchLeaders() {
@@ -41,7 +99,16 @@ function LeaderboardPage() {
           <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">
             🌍 Global Leaderboard
           </h1>
-          <div className="w-[100px]"></div>
+          <div className="flex flex-col items-end gap-2 w-[150px]">
+            <button 
+              onClick={findMyRank} 
+              disabled={findingRank || !userId} 
+              className="btn-game bg-sky-500 hover:bg-sky-600 text-white shadow-[0_0_15px_rgba(14,165,233,0.5)] whitespace-nowrap px-4 py-2 text-sm disabled:opacity-50"
+            >
+              {findingRank ? "جاري البحث..." : "ترتيبي 🎯"}
+            </button>
+            {myRankMsg && <div className="text-[10px] text-destructive font-bold text-right absolute top-full mt-1">{myRankMsg}</div>}
+          </div>
         </div>
 
         <div className="panel bg-card/60 backdrop-blur-xl border border-white/10 shadow-2xl p-0 overflow-hidden">
@@ -55,9 +122,9 @@ function LeaderboardPage() {
                 const rankColors = ["text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.5)]", "text-gray-300 drop-shadow-[0_0_8px_rgba(209,213,219,0.5)]", "text-amber-600 drop-shadow-[0_0_8px_rgba(217,119,6,0.5)]", "text-muted-foreground"];
                 const medals = ["🥇", "🥈", "🥉", ""];
                 return (
-                  <div key={p.id} className={`flex items-center gap-4 p-4 hover:bg-white/5 transition-colors ${i === 0 ? "bg-primary/10" : ""}`}>
+                  <div id={`rank-${p.id}`} key={p.id} className={`flex items-center gap-4 p-4 transition-colors ${i === 0 ? "bg-primary/10" : "hover:bg-white/5"} ${highlightUserId === p.id ? "bg-sky-500/20 border border-sky-500/50 shadow-[0_0_20px_rgba(14,165,233,0.3)]" : ""}`}>
                     <div className={`text-2xl md:text-3xl font-black w-12 text-center ${rankColors[i] || rankColors[3]}`}>
-                      {medals[i] || `#${i + 1}`}
+                      {p.exactRank ? `#${p.exactRank}` : (medals[i] || `#${i + 1}`)}
                     </div>
                     <Avatar id={p.avatar_id || 'a1'} size={56} />
                     <div className="flex-1">
