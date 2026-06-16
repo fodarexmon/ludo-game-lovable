@@ -53,7 +53,8 @@ function RoomPage() {
       const r = roomRefCurrent.current;
       const pl = playersRefCurrent.current;
       const uid = userId;
-      if (r && uid && (r.status === "quick_match_lobby" || r.status === "waiting")) {
+      if (!r || !uid) return;
+      if (r.status === "quick_match_lobby" || r.status === "waiting") {
         if (hasResignedRef.current) return;
         hasResignedRef.current = true;
         
@@ -171,7 +172,7 @@ function RoomPage() {
 
   const isActuallyPlaying = room?.status === "playing" && game !== null && !gameOver(game) && mySeat !== -1 && !game?.resigned?.includes(mySeat);
 
-  const blocker = useBlocker({
+  const navBlocker = useBlocker({
     shouldBlockFn: () => isActuallyPlaying,
     withResolver: true,
   });
@@ -1176,7 +1177,7 @@ function OnlineMatch({ game, room, mySeat, profiles, userId, doRoll, doMove, rol
           </div>
         )}
 
-        {(showResignConfirm || blocker.status === "blocked") && (
+        {(showResignConfirm || navBlocker.status === "blocked") && (
           <div className="fixed inset-0 z-[100] grid place-items-center bg-black/70 p-4 animate-in fade-in backdrop-blur-sm">
             <div className="panel max-w-sm w-full text-center shadow-2xl border border-destructive/50 bg-black/95">
               <div className="mb-4 text-5xl">⚠️</div>
@@ -1187,12 +1188,12 @@ function OnlineMatch({ game, room, mySeat, profiles, userId, doRoll, doMove, rol
               <div className="flex gap-3">
                 <button onClick={() => {
                   setShowResignConfirm(false);
-                  if (blocker.status === "blocked") blocker.reset();
+                  if (navBlocker.status === "blocked") navBlocker.reset();
                 }} className="btn-ghost flex-1 py-3 text-sm">إلغاء</button>
                 <button onClick={() => {
                   setShowResignConfirm(false);
                   onResign().then(() => {
-                    if (blocker.status === "blocked") blocker.proceed();
+                    if (navBlocker.status === "blocked") navBlocker.proceed();
                   });
                 }} className="btn-game bg-destructive/80 hover:bg-destructive flex-1 py-3 text-sm">نعم، انسحب</button>
               </div>
