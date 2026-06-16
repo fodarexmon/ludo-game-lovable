@@ -38,6 +38,7 @@ function RoomPage() {
   const [copied, setCopied] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const writeLock = useRef(false);
+  const hasResignedRef = useRef(false);
 
   const roomRefCurrent = useRef<RoomRow | null>(null);
   const playersRefCurrent = useRef<PlayerRow[]>([]);
@@ -53,6 +54,9 @@ function RoomPage() {
       const pl = playersRefCurrent.current;
       const uid = userId;
       if (r && uid && (r.status === "quick_match_lobby" || r.status === "waiting")) {
+        if (hasResignedRef.current) return;
+        hasResignedRef.current = true;
+        
         const newPlayers = pl.filter(p => p.user_id !== uid);
         const updates: any = { players: newPlayers };
         if (r.isQuickMatch) {
@@ -66,6 +70,9 @@ function RoomPage() {
         const mySeat = pl.find(p => p.user_id === uid)?.seat ?? -1;
         const game = r.state as any;
         if (mySeat !== -1 && !game.resigned?.includes(mySeat) && !game.winners?.includes(mySeat)) {
+          if (hasResignedRef.current) return;
+          hasResignedRef.current = true;
+
           const next = resignPlayer(game, mySeat);
           updateDoc(doc(db, "rooms", code), { 
             state: next,
@@ -95,9 +102,9 @@ function RoomPage() {
       }
     };
 
-    window.addEventListener("beforeunload", handleUnload);
+    window.addEventListener("pagehide", handleUnload);
     return () => {
-      window.removeEventListener("beforeunload", handleUnload);
+      window.removeEventListener("pagehide", handleUnload);
       handleUnload();
     };
   }, [userId, code]);
@@ -220,6 +227,10 @@ function RoomPage() {
 
   async function onResign() {
     if (!room || !userId || !game || mySeat < 0 || gameOver(game)) return;
+    
+    if (hasResignedRef.current) return;
+    hasResignedRef.current = true;
+
     const pdRef = doc(db, "profiles", userId);
     const pDoc = await getDoc(pdRef);
     const now = new Date();
