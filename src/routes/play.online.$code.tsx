@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useBlocker } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { auth, db } from "@/integrations/firebase/client";
 import { onAuthStateChanged } from "firebase/auth";
@@ -161,6 +161,13 @@ function RoomPage() {
   const game: GameState | null = room?.status === "playing" || room?.status === "finished" ? room.state as GameState : null;
   const mySeat = players.find((p) => p.user_id === userId)?.seat ?? -1;
   const isHost = room?.host_id === userId;
+
+  const isActuallyPlaying = room?.status === "playing" && game !== null && !gameOver(game) && mySeat !== -1 && !game?.resigned?.includes(mySeat);
+
+  const blocker = useBlocker({
+    shouldBlockFn: () => isActuallyPlaying,
+    withResolver: true,
+  });
 
   async function startGame() {
     if (!room || (!isHost && !room.isQuickMatch) || players.length < 2) return;
@@ -1158,8 +1165,8 @@ function OnlineMatch({ game, room, mySeat, profiles, userId, doRoll, doMove, rol
           </div>
         )}
 
-        {showResignConfirm && (
-          <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4 animate-in fade-in backdrop-blur-sm">
+        {(showResignConfirm || blocker.status === "blocked") && (
+          <div className="fixed inset-0 z-[100] grid place-items-center bg-black/70 p-4 animate-in fade-in backdrop-blur-sm">
             <div className="panel max-w-sm w-full text-center shadow-2xl border border-destructive/50 bg-black/95">
               <div className="mb-4 text-5xl">⚠️</div>
               <h2 className="text-xl font-bold mb-2">هل أنت متأكد من الانسحاب؟</h2>
@@ -1167,10 +1174,15 @@ function OnlineMatch({ game, room, mySeat, profiles, userId, doRoll, doMove, rol
                 ملاحظة: سيتم حظرك من اللعب أونلاين لمدة 15 دقيقة كعقوبة.
               </p>
               <div className="flex gap-3">
-                <button onClick={() => setShowResignConfirm(false)} className="btn-ghost flex-1 py-3 text-sm">إلغاء</button>
                 <button onClick={() => {
                   setShowResignConfirm(false);
-                  onResign();
+                  if (blocker.status === "blocked") blocker.reset();
+                }} className="btn-ghost flex-1 py-3 text-sm">إلغاء</button>
+                <button onClick={() => {
+                  setShowResignConfirm(false);
+                  onResign().then(() => {
+                    if (blocker.status === "blocked") blocker.proceed();
+                  });
                 }} className="btn-game bg-destructive/80 hover:bg-destructive flex-1 py-3 text-sm">نعم، انسحب</button>
               </div>
             </div>
