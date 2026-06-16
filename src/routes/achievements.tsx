@@ -30,14 +30,14 @@ function AchievementsPage() {
   }
 
   return (
-    <div className="min-h-screen p-6 md:p-12 relative overflow-hidden">
+    <div className="min-h-screen p-6 md:p-12 relative overflow-hidden" dir="rtl">
       {/* Background decorations */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/20 blur-[120px] rounded-full pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-accent/20 blur-[120px] rounded-full pointer-events-none" />
       
       <div className="mx-auto max-w-4xl relative z-10">
         <div className="flex items-center gap-4 mb-8">
-          <Link to="/" className="btn-ghost !p-3">
+          <Link to="/" className="btn-ghost !p-3 transform rotate-180">
             <span className="text-xl">←</span>
           </Link>
           <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-amber-600">

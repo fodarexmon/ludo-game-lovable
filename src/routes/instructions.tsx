@@ -6,14 +6,14 @@ export const Route = createFileRoute("/instructions")({
 
 function InstructionsPage() {
   return (
-    <div className="min-h-screen p-6 md:p-12 relative overflow-y-auto">
+    <div className="min-h-screen p-6 md:p-12 relative overflow-y-auto" dir="rtl">
       {/* Background decorations */}
       <div className="fixed top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 blur-[120px] rounded-full pointer-events-none" />
       <div className="fixed bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-500/10 blur-[120px] rounded-full pointer-events-none" />
       
       <div className="mx-auto max-w-3xl relative z-10 pb-20">
         <div className="flex items-center gap-4 mb-8 sticky top-0 bg-background/80 backdrop-blur-md py-4 border-b border-white/5 z-20">
-          <Link to="/" className="btn-ghost !p-3">
+          <Link to="/" className="btn-ghost !p-3 transform rotate-180">
             <span className="text-xl">←</span>
           </Link>
           <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-fuchsia-600">
