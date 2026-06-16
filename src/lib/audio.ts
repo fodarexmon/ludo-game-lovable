@@ -34,10 +34,11 @@ function playTone(freq: number, type: OscillatorType, duration: number, vol = 0.
 export function playRollSound() {
   const ctx = getAudioCtx();
   if (!ctx) return;
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 6; i++) {
     setTimeout(() => {
-      playTone(200 + Math.random() * 200, 'square', 0.05, 0.02);
-    }, i * 40);
+      // Increased volume from 0.02 to 0.2 and made it sound more like a clatter
+      playTone(300 + Math.random() * 400, 'triangle', 0.06, 0.2);
+    }, i * 35);
   }
 }
 
