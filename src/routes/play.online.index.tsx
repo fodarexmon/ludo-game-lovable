@@ -22,6 +22,7 @@ function OnlineLobby() {
   const [newRoomCode, setNewRoomCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"menu" | "rooms">("menu");
 
   useEffect(() => {
     setNewRoomCode(genCode());
@@ -125,6 +126,80 @@ function OnlineLobby() {
     }
   }
 
+  async function joinQuickMatch() {
+    if (!user) return;
+    setBusy(true); setErr(null);
+    try {
+      const pDoc = await getDoc(doc(db, "profiles", user.id));
+      if (pDoc.exists()) {
+        const pd = pDoc.data();
+        if (pd.bans && pd.bans.until > Date.now()) {
+          const minLeft = Math.ceil((pd.bans.until - Date.now()) / 60000);
+          setErr(`You are restricted from online play due to resigning. Try again in ${minLeft} minutes.`);
+          setBusy(false);
+          return;
+        }
+      }
+
+      await ensureProfile(user.id);
+
+      // Find an available quick match room
+      const { collection, query, where, getDocs, limit, increment } = await import("firebase/firestore");
+      const q = query(
+        collection(db, "rooms"),
+        where("status", "==", "quick_match_lobby"),
+        where("playerCount", "<", 4),
+        limit(1)
+      );
+      
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        const roomDoc = snap.docs[0];
+        const room = roomDoc.data();
+        
+        if (room.players.some((p: any) => p.user_id === user.id)) {
+          nav({ to: "/play/online/$code", params: { code: room.code } });
+          return;
+        }
+        
+        const taken = new Set(room.players.map((r: any) => r.seat));
+        let seat = 0;
+        while (taken.has(seat)) seat++;
+        const colors = ["red", "green", "yellow", "blue"];
+        
+        await updateDoc(roomDoc.ref, {
+          players: arrayUnion({ user_id: user.id, seat, color: colors[seat] }),
+          playerCount: increment(1)
+        });
+        
+        nav({ to: "/play/online/$code", params: { code: room.code } });
+      } else {
+        // Create new quick match room
+        const newCode = "QM" + genCode().substring(0, 4);
+        const roomRef = doc(db, "rooms", newCode);
+        
+        await setDoc(roomRef, {
+          code: newCode,
+          host_id: user.id,
+          status: "quick_match_lobby",
+          isQuickMatch: true,
+          playerCount: 1,
+          state: {},
+          players: [{ user_id: user.id, seat: 0, color: "red" }],
+          readyPlayers: [],
+          matchCount: 1,
+          scores: {}
+        });
+        
+        nav({ to: "/play/online/$code", params: { code: newCode } });
+      }
+    } catch (e: any) {
+      console.error(e);
+      setErr("Could not join quick match. Please try again.");
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="min-h-screen p-6 flex flex-col relative overflow-hidden">
       {/* Decorative Background Blur */}
@@ -138,50 +213,80 @@ function OnlineLobby() {
           <p className="text-lg text-muted-foreground">Create a room to play with friends or join an existing one.</p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8">
-          {/* Create Room Card */}
-          <div className="panel flex flex-col justify-between bg-card/60 backdrop-blur-xl border border-white/10 shadow-2xl transition-transform hover:-translate-y-1 hover:shadow-primary/20">
-            <div>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xl">🏠</div>
-                <h2 className="text-2xl font-bold">Create Room</h2>
-              </div>
-              <p className="mb-6 text-muted-foreground">Start a new game and invite your friends using a unique 6-character code.</p>
-              
-              <div className="mb-6 p-4 rounded-xl bg-black/40 border border-white/5 text-center">
-                <div className="text-xs uppercase tracking-widest text-muted-foreground mb-1">Your Room Code</div>
-                <div className="text-4xl font-mono tracking-widest text-primary font-bold drop-shadow-md">{newRoomCode || "..."}</div>
-              </div>
-            </div>
-            
-            <button onClick={createRoom} disabled={busy || !newRoomCode} className="btn-game w-full text-lg shadow-lg shadow-primary/30">
-              Create Room & Invite
+        {viewMode === "menu" ? (
+          <div className="grid md:grid-cols-2 gap-8 max-w-2xl mx-auto">
+            {/* Quick Match Button */}
+            <button 
+              onClick={joinQuickMatch} 
+              disabled={busy}
+              className="panel flex flex-col items-center justify-center text-center bg-card/60 backdrop-blur-xl border border-white/10 shadow-2xl transition-all hover:-translate-y-2 hover:shadow-yellow-500/30 group p-8"
+            >
+              <div className="w-20 h-20 rounded-full bg-yellow-500/20 flex items-center justify-center text-4xl mb-4 group-hover:scale-110 transition-transform">⚡</div>
+              <h2 className="text-3xl font-black mb-2 text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-amber-600">اللعب السريع</h2>
+              <p className="text-muted-foreground font-medium">بحث تلقائي عن لاعبين للعب فوراً بدون كود.</p>
+              <div className="mt-6 text-sm bg-yellow-500/10 text-yellow-500 px-4 py-2 rounded-full font-bold">Quick Match</div>
+            </button>
+
+            {/* Private Rooms Button */}
+            <button 
+              onClick={() => setViewMode("rooms")}
+              className="panel flex flex-col items-center justify-center text-center bg-card/60 backdrop-blur-xl border border-white/10 shadow-2xl transition-all hover:-translate-y-2 hover:shadow-primary/30 group p-8"
+            >
+              <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center text-4xl mb-4 group-hover:scale-110 transition-transform">🏠</div>
+              <h2 className="text-3xl font-black mb-2 text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-500">الغرف الخاصة</h2>
+              <p className="text-muted-foreground font-medium">إنشاء غرفة أو الانضمام لغرفة أصدقاء باستخدام كود.</p>
+              <div className="mt-6 text-sm bg-primary/10 text-primary px-4 py-2 rounded-full font-bold">Private Rooms</div>
             </button>
           </div>
-
-          {/* Join Room Card */}
-          <div className="panel flex flex-col justify-between bg-card/60 backdrop-blur-xl border border-white/10 shadow-2xl transition-transform hover:-translate-y-1 hover:shadow-accent/20">
-            <div>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center text-accent text-xl">🤝</div>
-                <h2 className="text-2xl font-bold">Join Room</h2>
+        ) : (
+          <div>
+            <button onClick={() => setViewMode("menu")} className="btn-ghost mb-6">← العودة للخيارات</button>
+            <div className="grid md:grid-cols-2 gap-8">
+              {/* Create Room Card */}
+              <div className="panel flex flex-col justify-between bg-card/60 backdrop-blur-xl border border-white/10 shadow-2xl transition-transform hover:-translate-y-1 hover:shadow-primary/20">
+                <div>
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xl">🏠</div>
+                    <h2 className="text-2xl font-bold">Create Room</h2>
+                  </div>
+                  <p className="mb-6 text-muted-foreground">Start a new game and invite your friends using a unique 6-character code.</p>
+                  
+                  <div className="mb-6 p-4 rounded-xl bg-black/40 border border-white/5 text-center">
+                    <div className="text-xs uppercase tracking-widest text-muted-foreground mb-1">Your Room Code</div>
+                    <div className="text-4xl font-mono tracking-widest text-primary font-bold drop-shadow-md">{newRoomCode || "..."}</div>
+                  </div>
+                </div>
+                
+                <button onClick={createRoom} disabled={busy || !newRoomCode} className="btn-game w-full text-lg shadow-lg shadow-primary/30">
+                  Create Room & Invite
+                </button>
               </div>
-              <p className="mb-6 text-muted-foreground">Got a code from a friend? Enter it below to join their game.</p>
-              
-              <div className="mb-6 relative">
-                <input
-                  value={joinCode} onChange={(e) => setJoinCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6))}
-                  placeholder="ABC123"
-                  className="w-full rounded-xl border border-white/20 bg-black/40 px-4 py-5 text-center text-3xl font-mono tracking-widest text-white placeholder:text-white/20 focus:border-accent focus:ring-2 focus:ring-accent/50 outline-none transition-all"
-                />
+
+              {/* Join Room Card */}
+              <div className="panel flex flex-col justify-between bg-card/60 backdrop-blur-xl border border-white/10 shadow-2xl transition-transform hover:-translate-y-1 hover:shadow-accent/20">
+                <div>
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center text-accent text-xl">🤝</div>
+                    <h2 className="text-2xl font-bold">Join Room</h2>
+                  </div>
+                  <p className="mb-6 text-muted-foreground">Got a code from a friend? Enter it below to join their game.</p>
+                  
+                  <div className="mb-6 relative">
+                    <input
+                      value={joinCode} onChange={(e) => setJoinCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6))}
+                      placeholder="ABC123"
+                      className="w-full rounded-xl border border-white/20 bg-black/40 px-4 py-5 text-center text-3xl font-mono tracking-widest text-white placeholder:text-white/20 focus:border-accent focus:ring-2 focus:ring-accent/50 outline-none transition-all"
+                    />
+                  </div>
+                </div>
+
+                <button onClick={joinRoom} disabled={busy || joinCode.length !== 6} className="btn-game w-full text-lg shadow-lg shadow-accent/30 !bg-gradient-to-b !from-accent !to-blue-700 !text-white">
+                  Join Game
+                </button>
               </div>
             </div>
-
-            <button onClick={joinRoom} disabled={busy || joinCode.length !== 6} className="btn-game w-full text-lg shadow-lg shadow-accent/30 !bg-gradient-to-b !from-accent !to-blue-700 !text-white">
-              Join Game
-            </button>
           </div>
-        </div>
+        )}
 
         {err && (
           <div className="mt-8 p-4 rounded-xl bg-destructive/20 border border-destructive/50 text-destructive text-center animate-in fade-in zoom-in font-medium">

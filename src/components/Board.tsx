@@ -15,7 +15,7 @@ function rect(col: number, row: number, fill: string, stroke = "#1f2937", sw = 1
   return <rect key={key} x={col * CELL} y={row * CELL} width={CELL} height={CELL} fill={fill} stroke={stroke} strokeWidth={sw} />;
 }
 
-export function Board({ state, onTokenClick }: { state: GameState; onTokenClick?: (seat: number, tokenIdx: number) => void }) {
+export function Board({ state, onTokenClick, killVfx }: { state: GameState; onTokenClick?: (seat: number, tokenIdx: number) => void; killVfx?: { active: boolean, position: number | null, color: string | null } }) {
   // figure legal moves for current player to highlight
   const legal = state.dice && state.awaitingMove ? legalMoves(state, state.dice) : [];
   const isCurrent = (seat: number) => seat === state.turn;
@@ -36,7 +36,7 @@ export function Board({ state, onTokenClick }: { state: GameState; onTokenClick?
         // y === 0 is top row (Red, Green), y === 9 is bottom row (Blue, Yellow)
         const textY = y === 0 ? (y + 0.7) * CELL : (y + 5.7) * CELL;
         return (
-          <g key={c}>
+          <g key={c} id={`base-${c}`}>
             <rect x={x * CELL} y={y * CELL} width={6 * CELL} height={6 * CELL} fill={COLOR_HEX[c]} />
             <rect x={(x + 1) * CELL} y={(y + 1) * CELL} width={4 * CELL} height={4 * CELL} fill="#fff" />
             <rect x={(x + 1.4) * CELL} y={(y + 1.4) * CELL} width={3.2 * CELL} height={3.2 * CELL} fill={COLOR_LIGHT[c]} rx={6} />
@@ -105,7 +105,7 @@ export function Board({ state, onTokenClick }: { state: GameState; onTokenClick?
       })}
 
       {/* center triangles (4 colors meeting) */}
-      <g>
+      <g id="board-center">
         <polygon points={`${6*CELL},${6*CELL} ${9*CELL},${6*CELL} ${7.5*CELL},${7.5*CELL}`} fill={COLOR_HEX.green} />
         <polygon points={`${9*CELL},${6*CELL} ${9*CELL},${9*CELL} ${7.5*CELL},${7.5*CELL}`} fill={COLOR_HEX.yellow} />
         <polygon points={`${9*CELL},${9*CELL} ${6*CELL},${9*CELL} ${7.5*CELL},${7.5*CELL}`} fill={COLOR_HEX.blue} />
@@ -184,6 +184,31 @@ export function Board({ state, onTokenClick }: { state: GameState; onTokenClick?
           );
         })
       )}
+      {/* Kill VFX Explosion */}
+      {killVfx?.active && killVfx.position !== null && killVfx.color && (
+        (() => {
+          const cell = cellFor(killVfx.color as Color, killVfx.position);
+          if (!cell) return null;
+          const [col, row] = cell;
+          const cx = (col + 0.5) * CELL;
+          const cy = (row + 0.5) * CELL;
+          return (
+            <g transform={`translate(${cx}, ${cy})`} className="animate-kill-vfx" style={{ transformOrigin: 'center' }}>
+              <circle cx={0} cy={0} r={CELL} fill="url(#explosion-grad)" opacity={0.8} />
+              <text x={0} y={CELL * 0.3} fontSize={CELL * 1.5} textAnchor="middle" filter="drop-shadow(0 0 10px red)">💥</text>
+            </g>
+          );
+        })()
+      )}
+      
+      {/* Define explosion gradient */}
+      <defs>
+        <radialGradient id="explosion-grad">
+          <stop offset="0%" stopColor="#ffeda6" stopOpacity="1" />
+          <stop offset="40%" stopColor="#ff5722" stopOpacity="0.8" />
+          <stop offset="100%" stopColor="#e91e63" stopOpacity="0" />
+        </radialGradient>
+      </defs>
     </svg>
   );
 }

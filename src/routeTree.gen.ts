@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as LeaderboardRouteImport } from './routes/leaderboard'
+import { Route as FriendsRouteImport } from './routes/friends'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PlayOfflineRouteImport } from './routes/play.offline'
@@ -25,6 +26,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const LeaderboardRoute = LeaderboardRouteImport.update({
   id: '/leaderboard',
   path: '/leaderboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FriendsRoute = FriendsRouteImport.update({
+  id: '/friends',
+  path: '/friends',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -56,6 +62,7 @@ const PlayOnlineCodeRoute = PlayOnlineCodeRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/friends': typeof FriendsRoute
   '/leaderboard': typeof LeaderboardRoute
   '/settings': typeof SettingsRoute
   '/play/offline': typeof PlayOfflineRoute
@@ -65,6 +72,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/friends': typeof FriendsRoute
   '/leaderboard': typeof LeaderboardRoute
   '/settings': typeof SettingsRoute
   '/play/offline': typeof PlayOfflineRoute
@@ -75,6 +83,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/friends': typeof FriendsRoute
   '/leaderboard': typeof LeaderboardRoute
   '/settings': typeof SettingsRoute
   '/play/offline': typeof PlayOfflineRoute
@@ -86,6 +95,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/friends'
     | '/leaderboard'
     | '/settings'
     | '/play/offline'
@@ -95,6 +105,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/friends'
     | '/leaderboard'
     | '/settings'
     | '/play/offline'
@@ -104,6 +115,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/auth'
+    | '/friends'
     | '/leaderboard'
     | '/settings'
     | '/play/offline'
@@ -114,6 +126,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
+  FriendsRoute: typeof FriendsRoute
   LeaderboardRoute: typeof LeaderboardRoute
   SettingsRoute: typeof SettingsRoute
   PlayOfflineRoute: typeof PlayOfflineRoute
@@ -135,6 +148,13 @@ declare module '@tanstack/react-router' {
       path: '/leaderboard'
       fullPath: '/leaderboard'
       preLoaderRoute: typeof LeaderboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/friends': {
+      id: '/friends'
+      path: '/friends'
+      fullPath: '/friends'
+      preLoaderRoute: typeof FriendsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -178,6 +198,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
+  FriendsRoute: FriendsRoute,
   LeaderboardRoute: LeaderboardRoute,
   SettingsRoute: SettingsRoute,
   PlayOfflineRoute: PlayOfflineRoute,

@@ -5,11 +5,12 @@ import { Avatar } from "@/components/Avatar";
 import { COLOR_VAR } from "@/game/constants";
 import { Button } from "@/components/ui/button";
 
-export function Podium({ game, onHome }: { game: GameState; onHome: () => void }) {
+export function Podium({ game, onHome, room }: { game: GameState; onHome: () => void; room?: any }) {
   const numPlayers = game.players.length;
   
   // Calculate final ranks
   const board = [...game.winners];
+  game.players.forEach((p, i) => { if (!board.includes(i) && !p.hasResigned) board.push(i); });
   game.players.forEach((p, i) => { if (!board.includes(i)) board.push(i); });
 
   const getPoints = (num: number, rank: number) => {
@@ -64,7 +65,14 @@ export function Podium({ game, onHome }: { game: GameState; onHome: () => void }
             <div className="flex flex-col items-center mb-4">
               <Avatar id={game.players[second].avatarId} size={64} ring={COLOR_VAR[game.players[second].color]} />
               <div className="text-white font-bold mt-2 truncate w-24 text-center">{game.players[second].name}</div>
-              <div className="text-gray-300 text-sm">+{getPoints(numPlayers, 1)} pts</div>
+              <div className="text-gray-300 text-sm">
+                +{getPoints(numPlayers, 1)} pts 
+                {room?.coinsEarned && game.players[second].userId && room.coinsEarned[game.players[second].userId] > 0 && (
+                  <span className="ml-1 text-yellow-400 font-bold flex items-center justify-center gap-1">
+                    +{room.coinsEarned[game.players[second].userId]} <img src="/coin.png" alt="coins" className="w-4 h-4" />
+                  </span>
+                )}
+              </div>
             </div>
             <div className="w-24 md:w-32 h-32 bg-slate-300 rounded-t-xl flex items-center justify-center border-t-4 border-slate-400 shadow-2xl relative overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent"></div>
@@ -81,7 +89,14 @@ export function Podium({ game, onHome }: { game: GameState; onHome: () => void }
               <Avatar id={game.players[first].avatarId} size={80} ring={COLOR_VAR[game.players[first].color]} />
             </div>
             <div className="text-yellow-400 font-black mt-2 text-lg truncate w-28 text-center">{game.players[first].name}</div>
-            <div className="text-yellow-200 text-sm font-bold">+{getPoints(numPlayers, 0)} pts</div>
+            <div className="text-yellow-200 text-sm font-bold flex flex-col items-center">
+              +{getPoints(numPlayers, 0)} pts
+              {room?.coinsEarned && game.players[first].userId && room.coinsEarned[game.players[first].userId] > 0 && (
+                <span className="text-yellow-400 font-black flex items-center gap-1 mt-0.5">
+                  +{room.coinsEarned[game.players[first].userId]} <img src="/coin.png" alt="coins" className="w-5 h-5 drop-shadow-md" />
+                </span>
+              )}
+            </div>
           </div>
           <div className="w-28 md:w-36 h-48 bg-yellow-400 rounded-t-xl flex items-center justify-center border-t-4 border-yellow-200 shadow-[0_0_40px_rgba(250,204,21,0.4)] relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-white/30 to-transparent"></div>
@@ -95,7 +110,14 @@ export function Podium({ game, onHome }: { game: GameState; onHome: () => void }
             <div className="flex flex-col items-center mb-4">
               <Avatar id={game.players[third].avatarId} size={64} ring={COLOR_VAR[game.players[third].color]} />
               <div className="text-white font-bold mt-2 truncate w-24 text-center">{game.players[third].name}</div>
-              <div className="text-orange-300 text-sm">+{getPoints(numPlayers, 2)} pts</div>
+              <div className="text-orange-300 text-sm">
+                +{getPoints(numPlayers, 2)} pts
+                {room?.coinsEarned && game.players[third].userId && room.coinsEarned[game.players[third].userId] > 0 && (
+                  <span className="ml-1 text-yellow-400 font-bold flex items-center justify-center gap-1">
+                    +{room.coinsEarned[game.players[third].userId]} <img src="/coin.png" alt="coins" className="w-4 h-4" />
+                  </span>
+                )}
+              </div>
             </div>
             <div className="w-24 md:w-32 h-24 bg-orange-700 rounded-t-xl flex items-center justify-center border-t-4 border-orange-500 shadow-2xl relative overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent"></div>
