@@ -742,6 +742,53 @@ function OnlineMatch({ game, room, mySeat, profiles, userId, doRoll, doMove, rol
     return () => clearInterval(interval);
   }, [userId, code, isGameOver]);
 
+  const lastActiveRef = useRef<Record<string, number>>({});
+  const lastSeenRef = useRef<Record<string, number>>({});
+  const [offlinePlayers, setOfflinePlayers] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!room?.lastActive) return;
+    const now = Date.now();
+    players.forEach((p: any) => {
+      const pLastActive = room.lastActive[p.user_id];
+      if (pLastActive !== lastActiveRef.current[p.user_id]) {
+        lastActiveRef.current[p.user_id] = pLastActive;
+        lastSeenRef.current[p.user_id] = now;
+      }
+    });
+  }, [room?.lastActive, players]);
+
+  useEffect(() => {
+    if (isGameOver) return;
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const currentOffline = new Set<string>();
+      players.forEach((p: any) => {
+        if (p.user_id === userId) return;
+        const lastSeen = lastSeenRef.current[p.user_id];
+        // If haven't seen an update in 20 seconds, mark as disconnected
+        if (lastSeen && now - lastSeen > 20000) {
+          currentOffline.add(p.user_id);
+        }
+      });
+      
+      setOfflinePlayers(prev => {
+        currentOffline.forEach(id => {
+          if (!prev.has(id)) {
+            toast.error(`🔌 ${profiles[id]?.display_name || "Player"} disconnected`);
+          }
+        });
+        prev.forEach(id => {
+          if (!currentOffline.has(id)) {
+            toast.success(`⚡ ${profiles[id]?.display_name || "Player"} reconnected`);
+          }
+        });
+        return currentOffline;
+      });
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [players, profiles, userId, isGameOver]);
+
   const prevDice = useRef<number | null>(null);
   useEffect(() => {
     if (game.dice !== null && prevDice.current === null && !myTurn) { playRollSound(); }
@@ -872,8 +919,7 @@ function OnlineMatch({ game, room, mySeat, profiles, userId, doRoll, doMove, rol
                 if (p.hasResigned) return null;
                 const prof = profiles?.[p.userId];
                 const ping = room.pings?.[p.userId];
-                const lastActive = room.lastActive?.[p.userId];
-                const isStale = lastActive ? (Date.now() - lastActive > 25000) : false;
+                const isStale = offlinePlayers.has(p.userId);
                 return (
                 <div key={i} className="relative">
                   <div onClick={() => { if (p.userId !== userId) setReactionTarget(i); }} className={p.userId !== userId ? "cursor-pointer transition-transform hover:scale-[1.02]" : ""}>

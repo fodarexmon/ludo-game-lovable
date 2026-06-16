@@ -102,12 +102,20 @@ function OnlineLobby() {
       
       if (!roomDoc.exists()) throw new Error("Room not found");
       const room = roomDoc.data();
-      if (room.status !== "lobby") throw new Error("Game already started");
-      
       const existing = room.players || [];
-      if (existing.some((r: any) => r.user_id === user.id)) {
+      const alreadyInRoom = existing.some((r: any) => r.user_id === user.id);
+      
+      // Resigned players are removed from players or flagged in game.resigned, but let's check game state if it exists
+      if (room.state?.resigned?.includes(existing.find((r: any) => r.user_id === user.id)?.seat)) {
+        throw new Error("لقد انسحبت من هذه المباراة ولا يمكنك العودة إليها.");
+      }
+
+      if (!alreadyInRoom && room.status !== "lobby") throw new Error("Game already started");
+      
+      if (alreadyInRoom) {
         nav({ to: "/play/online/$code", params: { code: c } }); return;
       }
+      
       if (existing.length >= 4) throw new Error("Room is full");
       
       const taken = new Set(existing.map((r: any) => r.seat));
