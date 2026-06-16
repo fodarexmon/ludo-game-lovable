@@ -39,6 +39,39 @@ function RoomPage() {
   const [err, setErr] = useState<string | null>(null);
   const writeLock = useRef(false);
 
+  const roomRefCurrent = useRef<RoomRow | null>(null);
+  const playersRefCurrent = useRef<PlayerRow[]>([]);
+
+  useEffect(() => {
+    roomRefCurrent.current = room;
+    playersRefCurrent.current = players;
+  }, [room, players]);
+
+  useEffect(() => {
+    const handleUnload = () => {
+      const r = roomRefCurrent.current;
+      const pl = playersRefCurrent.current;
+      const uid = userId;
+      if (r && uid && (r.status === "quick_match_lobby" || r.status === "waiting")) {
+        const newPlayers = pl.filter(p => p.user_id !== uid);
+        const updates: any = { players: newPlayers };
+        if (r.isQuickMatch) {
+          updates.playerCount = newPlayers.length;
+          if (r.readyPlayers?.includes(uid)) {
+            updates.readyPlayers = r.readyPlayers.filter(id => id !== uid);
+          }
+        }
+        updateDoc(doc(db, "rooms", code), updates).catch(() => {});
+      }
+    };
+
+    window.addEventListener("beforeunload", handleUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleUnload);
+      handleUnload();
+    };
+  }, [userId, code]);
+
   useEffect(() => {
     let unsubFriends: (() => void) | null = null;
     const unsubscribe = onAuthStateChanged(auth, (user) => {
