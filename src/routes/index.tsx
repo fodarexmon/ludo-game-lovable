@@ -30,7 +30,7 @@ function HomePage() {
           <Link to="/play/offline" className="btn-game text-lg">🎲 Play Offline</Link>
           <Link to="/play/online" className="btn-game text-lg">🌐 Play Online</Link>
           <div className="grid grid-cols-2 gap-3 mt-2">
-            <Link to="/leaderboard" className="btn-ghost !py-4 text-sm whitespace-nowrap">🏆 Leaderboard</Link>
+            <Link to="/leaderboard" className="btn-ghost !py-4 text-sm whitespace-nowrap">🏆 لوحة الشرف</Link>
             <Link to="/settings" className="btn-ghost !py-4 text-sm whitespace-nowrap">⚙️ Settings</Link>
           </div>
         </div>

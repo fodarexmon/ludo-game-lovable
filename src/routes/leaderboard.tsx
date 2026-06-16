@@ -6,7 +6,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import { Avatar } from "@/components/Avatar";
 
 export const Route = createFileRoute("/leaderboard")({
-  head: () => ({ meta: [{ title: "Global Leaderboard — Ludo Star" }] }),
+  head: () => ({ meta: [{ title: "لوحة الشرف — Ludo Star" }] }),
   component: LeaderboardPage,
 });
 
@@ -97,7 +97,7 @@ function LeaderboardPage() {
         <div className="flex items-center justify-between mb-8">
           <Link to="/" className="btn-ghost bg-background/50 backdrop-blur-md">← Back Home</Link>
           <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">
-            🌍 Global Leaderboard
+            🌍 لوحة الشرف
           </h1>
           <div className="flex flex-col items-end gap-2 w-[150px]">
             <button 
