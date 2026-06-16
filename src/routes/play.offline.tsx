@@ -229,7 +229,11 @@ function Match({ game, setGame, onExit }: { game: GameState; setGame: (g: GameSt
                   <PlayerCard player={p} active={i === displayGame.turn && !isGameOver} finishedCount={finishedCount(i)} />
                   {p.kind === "human" && !isGameOver && (
                     <button 
-                      onClick={() => setGame(resignPlayer(game, i))} 
+                      onClick={() => {
+                        if (window.confirm("هل أنت متأكد من رغبتك في الانسحاب؟")) {
+                          setGame(resignPlayer(game, i));
+                        }
+                      }} 
                       className="absolute right-3 top-1/2 -translate-y-1/2 px-2 py-1 bg-destructive/10 text-destructive text-xs font-bold rounded hover:bg-destructive/20 border border-destructive/30"
                       title="انسحاب"
                     >

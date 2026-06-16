@@ -506,7 +506,11 @@ function OnlineMatch({ game, room, mySeat, profiles, userId, doRoll, doMove, rol
                   </div>
                   {p.userId === userId && !isHost && !isGameOver && (
                     <button 
-                      onClick={onResign} 
+                      onClick={() => {
+                        if (window.confirm("هل أنت متأكد من رغبتك في الانسحاب؟\nملاحظة: سيتم حظرك من اللعب أونلاين لمدة 15 دقيقة كعقوبة للانسحاب.")) {
+                          onResign();
+                        }
+                      }} 
                       className="absolute right-3 top-1/2 -translate-y-1/2 px-2 py-1 bg-destructive/10 text-destructive text-xs font-bold rounded hover:bg-destructive/20 border border-destructive/30"
                       title="انسحاب"
                     >
