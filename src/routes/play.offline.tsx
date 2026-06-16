@@ -233,7 +233,7 @@ function Match({ game, setGame, onExit }: { game: GameState; setGame: (g: GameSt
                       className="absolute right-3 top-1/2 -translate-y-1/2 px-2 py-1 bg-destructive/10 text-destructive text-xs font-bold rounded hover:bg-destructive/20 border border-destructive/30"
                       title="انسحاب"
                     >
-                      🏳️ Resign
+                      🏳️ انسحاب
                     </button>
                   )}
                 </div>
