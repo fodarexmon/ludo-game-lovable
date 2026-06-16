@@ -115,6 +115,7 @@ export function Board({ state, onTokenClick }: { state: GameState; onTokenClick?
       {/* Tokens */}
       {state.players.map((p, seat) =>
         state.tokens[seat].map((d, ti) => {
+          if (d === -1) return null;
           // location
           let cx: number, cy: number;
           let stackIndex = 0;

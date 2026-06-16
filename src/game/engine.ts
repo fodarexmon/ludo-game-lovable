@@ -12,6 +12,7 @@ export function createGame(players: Player[]): GameState {
     sixCount: 0,
     awaitingMove: false,
     winners: [],
+    resigned: [],
     lastMove: null,
     turnStartTime: Date.now(),
   };
@@ -29,7 +30,7 @@ export function trackIndexFor(color: Color, d: number): number | null {
 
 /** Pixel cell [col,row] for a token. */
 export function cellFor(color: Color, d: number): [number, number] | null {
-  if (d === 0 || d === FINISHED) return null;
+  if (d === 0 || d === FINISHED || d === -1) return null;
   if (d >= HOME_ENTER) {
     const i = d - HOME_ENTER; // 0..4
     return HOME_COLUMN[color][i];
@@ -41,11 +42,12 @@ export function cellFor(color: Color, d: number): [number, number] | null {
 /** Get legal token indexes the current player can move with the rolled dice. */
 export function legalMoves(state: GameState, dice: number): number[] {
   const player = state.players[state.turn];
+  if (player.hasResigned) return [];
   const myTokens = state.tokens[state.turn];
   const out: number[] = [];
   for (let t = 0; t < 4; t++) {
     const d = myTokens[t];
-    if (d === FINISHED) continue;
+    if (d === FINISHED || d === -1) continue;
     if (d === 0) {
       if (dice === 6) out.push(t);
       continue;
@@ -97,7 +99,7 @@ export function applyMove(state: GameState, tokenIdx: number): GameState {
   const extraTurn = dice === 6 || captures.length > 0 || to === FINISHED;
   s.dice = null;
   s.awaitingMove = false;
-  if (extraTurn && !s.players.every((_, i) => s.tokens[i].every((x) => x === FINISHED))) {
+  if (extraTurn && !s.players.every((_, i) => s.tokens[i].every((x) => x === FINISHED || x === -1))) {
     if (dice === 6) {
       // keep turn; sixCount already incremented on roll
     } else {
@@ -146,12 +148,28 @@ export function nextActiveSeat(s: GameState, from: number): number {
   const n = s.players.length;
   for (let i = 1; i <= n; i++) {
     const seat = (from + i) % n;
-    if (!s.tokens[seat].every((x) => x === FINISHED)) return seat;
+    if (!s.tokens[seat].every((x) => x === FINISHED || x === -1) && !s.resigned?.includes(seat)) return seat;
   }
   return from;
 }
 
 export function gameOver(s: GameState): boolean {
-  const active = s.players.filter((_, i) => !s.tokens[i].every((x) => x === FINISHED));
+  const active = s.players.filter((_, i) => !s.tokens[i].every((x) => x === FINISHED || x === -1) && !s.resigned?.includes(i));
   return active.length <= 1;
+}
+
+export function resignPlayer(state: GameState, seat: number): GameState {
+  const s: GameState = JSON.parse(JSON.stringify(state));
+  if (!s.resigned) s.resigned = [];
+  s.players[seat].hasResigned = true;
+  if (!s.resigned.includes(seat)) s.resigned.push(seat);
+  s.tokens[seat] = [-1, -1, -1, -1];
+  
+  if (s.turn === seat) {
+    s.dice = null;
+    s.awaitingMove = false;
+    s.turn = nextActiveSeat(s, seat);
+    s.turnStartTime = Date.now();
+  }
+  return s;
 }

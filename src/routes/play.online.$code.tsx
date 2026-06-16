@@ -8,7 +8,7 @@ import { Dice } from "@/components/Dice";
 import { PlayerCard } from "@/components/PlayerCard";
 import { Avatar } from "@/components/Avatar";
 import { COLORS, FINISHED, type Color } from "@/game/constants";
-import { applyMove, createGame, recordRoll, rollDice, gameOver, legalMoves } from "@/game/engine";
+import { applyMove, createGame, recordRoll, rollDice, gameOver, legalMoves, resignPlayer } from "@/game/engine";
 import { chooseMove } from "@/game/ai";
 import type { GameState, Player } from "@/game/types";
 import { playRollSound, playMoveSound, playCaptureSound, playFinishSound, playWinSound } from "@/lib/audio";
@@ -108,6 +108,33 @@ function RoomPage() {
     const newPlayers = players.filter(p => p.user_id !== userId);
     await updateDoc(doc(db, "rooms", code), { players: newPlayers });
     nav({ to: "/play/online" });
+  }
+
+  async function onResign() {
+    if (!room || !userId || !game || mySeat < 0 || gameOver(game)) return;
+    const pdRef = doc(db, "profiles", userId);
+    const pDoc = await getDoc(pdRef);
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    let newBan = { until: Date.now() + 15 * 60 * 1000, count: 1, lastBanDay: today };
+    if (pDoc.exists()) {
+      const oldBans = pDoc.data().bans;
+      if (oldBans && oldBans.lastBanDay === today) {
+        const newCount = oldBans.count + 1;
+        if (newCount >= 3) {
+          const eod = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).getTime();
+          newBan = { until: eod, count: newCount, lastBanDay: today };
+        } else {
+          newBan.count = newCount;
+        }
+      }
+    }
+    await updateDoc(pdRef, { bans: newBan });
+    await updateDoc(doc(db, "rooms", code), {
+      [`reactions.${mySeat}`]: { emoji: "🏳️", sender: mySeat, timestamp: Date.now() }
+    });
+    const next = resignPlayer(game, mySeat);
+    await handleStateChange(next);
   }
 
   async function pushState(newState: GameState, status?: string, additionalRoomUpdates?: any) {
@@ -309,7 +336,7 @@ function RoomPage() {
 
   if (!game) return <div className="p-6 text-center text-muted-foreground">Loading game…</div>;
 
-  return <OnlineMatch game={game} room={room} mySeat={mySeat} profiles={profiles} userId={userId} doRoll={doRoll} doMove={doMove} rolling={rolling} leave={leave} nextMatch={nextMatch} code={code} />;
+  return <OnlineMatch game={game} room={room} mySeat={mySeat} profiles={profiles} userId={userId} doRoll={doRoll} doMove={doMove} rolling={rolling} leave={leave} onResign={onResign} isHost={isHost} nextMatch={nextMatch} code={code} />;
 }
 
 function ReactionRenderer({ reaction }: { reaction?: { emoji: string, sender: string, timestamp: number } }) {
@@ -333,7 +360,7 @@ function ReactionRenderer({ reaction }: { reaction?: { emoji: string, sender: st
   );
 }
 
-function OnlineMatch({ game, room, mySeat, profiles, userId, doRoll, doMove, rolling, leave, nextMatch, code }: any) {
+function OnlineMatch({ game, room, mySeat, profiles, userId, doRoll, doMove, rolling, leave, onResign, isHost, nextMatch, code }: any) {
   const { animatedGame, isAnimating } = useGameAnimation(game);
   
   const displayGame = animatedGame || game;
@@ -464,12 +491,22 @@ function OnlineMatch({ game, room, mySeat, profiles, userId, doRoll, doMove, rol
             </div>
             <div className="space-y-2">
               {displayGame.players.map((p: any, i: number) => {
+                if (p.hasResigned) return null;
                 const prof = profiles?.[p.userId];
                 return (
                 <div key={i} className="relative">
                   <div onClick={() => { if (p.userId !== userId) setReactionTarget(i); }} className={p.userId !== userId ? "cursor-pointer transition-transform hover:scale-[1.02]" : ""}>
                     <PlayerCard player={p} active={i === displayGame.turn && !isGameOver} finishedCount={finishedCount(i)} />
                   </div>
+                  {p.userId === userId && !isHost && !isGameOver && (
+                    <button 
+                      onClick={onResign} 
+                      className="absolute right-3 top-1/2 -translate-y-1/2 px-2 py-1 bg-destructive/10 text-destructive text-xs font-bold rounded hover:bg-destructive/20 border border-destructive/30"
+                      title="انسحاب"
+                    >
+                      🏳️ Resign
+                    </button>
+                  )}
                   {reactionTarget === i && (
                     <div className="absolute top-full right-0 z-50 mt-2 w-64 p-4 bg-black/90 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl animate-in fade-in zoom-in-95">
                       <div className="flex items-center gap-3 mb-4 border-b border-white/10 pb-3">

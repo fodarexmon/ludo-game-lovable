@@ -47,6 +47,17 @@ function OnlineLobby() {
     if (!user) return;
     setBusy(true); setErr(null);
     try {
+      const pDoc = await getDoc(doc(db, "profiles", user.id));
+      if (pDoc.exists()) {
+        const pd = pDoc.data();
+        if (pd.bans && pd.bans.until > Date.now()) {
+          const minLeft = Math.ceil((pd.bans.until - Date.now()) / 60000);
+          setErr(`You are restricted from online play due to resigning. Try again in ${minLeft} minutes.`);
+          setBusy(false);
+          return;
+        }
+      }
+
       await ensureProfile(user.id);
       const roomRef = doc(db, "rooms", newRoomCode);
       
@@ -73,6 +84,17 @@ function OnlineLobby() {
     if (c.length !== 6) { setErr("Enter a 6-character code"); return; }
     setBusy(true); setErr(null);
     try {
+      const pDoc = await getDoc(doc(db, "profiles", user.id));
+      if (pDoc.exists()) {
+        const pd = pDoc.data();
+        if (pd.bans && pd.bans.until > Date.now()) {
+          const minLeft = Math.ceil((pd.bans.until - Date.now()) / 60000);
+          setErr(`You are restricted from online play due to resigning. Try again in ${minLeft} minutes.`);
+          setBusy(false);
+          return;
+        }
+      }
+
       await ensureProfile(user.id);
       const roomRef = doc(db, "rooms", c);
       const roomDoc = await getDoc(roomRef);
