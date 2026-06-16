@@ -35,7 +35,6 @@ function OfflinePage() {
     { kind: "off", name: "Bot Blue", avatarId: "a8" },
   ]);
   const [game, setGame] = useState<GameState | null>(null);
-  const [confirmResignSeat, setConfirmResignSeat] = useState<number | null>(null);
 
   function start() {
     const players: Player[] = seats
@@ -89,6 +88,7 @@ function OfflinePage() {
 
 function Match({ game, setGame, onExit }: { game: GameState; setGame: (g: GameState) => void; onExit: () => void }) {
   const [rolling, setRolling] = useState(false);
+  const [confirmResignSeat, setConfirmResignSeat] = useState<number | null>(null);
   const { animatedGame, isAnimating } = useGameAnimation(game);
   
   // Always use the logical game state for rules, but visually render animatedGame
