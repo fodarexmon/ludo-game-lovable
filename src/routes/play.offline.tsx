@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Board } from "@/components/Board";
 import { Dice } from "@/components/Dice";
 import { PlayerCard } from "@/components/PlayerCard";
@@ -35,6 +35,7 @@ function OfflinePage() {
     { kind: "off", name: "Bot Blue", avatarId: "a8" },
   ]);
   const [game, setGame] = useState<GameState | null>(null);
+  const [confirmResignSeat, setConfirmResignSeat] = useState<number | null>(null);
 
   function start() {
     const players: Player[] = seats
@@ -229,11 +230,7 @@ function Match({ game, setGame, onExit }: { game: GameState; setGame: (g: GameSt
                   <PlayerCard player={p} active={i === displayGame.turn && !isGameOver} finishedCount={finishedCount(i)} />
                   {p.kind === "human" && !isGameOver && (
                     <button 
-                      onClick={() => {
-                        if (window.confirm("هل أنت متأكد من رغبتك في الانسحاب؟")) {
-                          setGame(resignPlayer(game, i));
-                        }
-                      }} 
+                      onClick={() => setConfirmResignSeat(i)} 
                       className="absolute right-3 top-1/2 -translate-y-1/2 px-2 py-1 bg-destructive/10 text-destructive text-xs font-bold rounded hover:bg-destructive/20 border border-destructive/30"
                       title="انسحاب"
                     >
@@ -271,6 +268,23 @@ function Match({ game, setGame, onExit }: { game: GameState; setGame: (g: GameSt
               <div className="flex gap-3">
                 <button onClick={onExit} className="btn-ghost flex-1 py-4">New setup</button>
                 <Link to="/" className="btn-game flex-1 py-4">Home</Link>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {confirmResignSeat !== null && (
+          <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4 animate-in fade-in backdrop-blur-sm">
+            <div className="panel max-w-sm w-full text-center shadow-2xl border border-destructive/50 bg-black/95">
+              <div className="mb-4 text-5xl">⚠️</div>
+              <h2 className="text-xl font-bold mb-2">هل أنت متأكد من الانسحاب؟</h2>
+              <p className="mb-6 text-muted-foreground text-sm">إذا انسحبت الآن، ستعتبر خاسراً وستحتل المركز الأخير.</p>
+              <div className="flex gap-3">
+                <button onClick={() => setConfirmResignSeat(null)} className="btn-ghost flex-1 py-3 text-sm">إلغاء</button>
+                <button onClick={() => {
+                  setGame(resignPlayer(game, confirmResignSeat));
+                  setConfirmResignSeat(null);
+                }} className="btn-game bg-destructive/80 hover:bg-destructive flex-1 py-3 text-sm">نعم، انسحب</button>
               </div>
             </div>
           </div>

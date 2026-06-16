@@ -371,6 +371,7 @@ function OnlineMatch({ game, room, mySeat, profiles, userId, doRoll, doMove, rol
   const finishedCount = (seat: number) => game.tokens[seat].filter((d: number) => d === FINISHED).length;
   const myTurn = mySeat === game.turn;
   const canRoll = myTurn && !game.dice && !game.awaitingMove && !isAnimating && !isGameOver && !rolling;
+  const [showResignConfirm, setShowResignConfirm] = useState(false);
 
   const prevDice = useRef<number | null>(null);
   useEffect(() => {
@@ -506,11 +507,7 @@ function OnlineMatch({ game, room, mySeat, profiles, userId, doRoll, doMove, rol
                   </div>
                   {p.userId === userId && !isHost && !isGameOver && (
                     <button 
-                      onClick={() => {
-                        if (window.confirm("هل أنت متأكد من رغبتك في الانسحاب؟\nملاحظة: سيتم حظرك من اللعب أونلاين لمدة 15 دقيقة كعقوبة للانسحاب.")) {
-                          onResign();
-                        }
-                      }} 
+                      onClick={() => setShowResignConfirm(true)} 
                       className="absolute right-3 top-1/2 -translate-y-1/2 px-2 py-1 bg-destructive/10 text-destructive text-xs font-bold rounded hover:bg-destructive/20 border border-destructive/30"
                       title="انسحاب"
                     >
@@ -595,6 +592,25 @@ function OnlineMatch({ game, room, mySeat, profiles, userId, doRoll, doMove, rol
                   <button onClick={nextMatch} className="btn-game flex-1 py-4">Start Next Match</button>
                 ) : null}
                 <button onClick={leave} className="btn-ghost flex-1 py-4">Leave Room</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showResignConfirm && (
+          <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4 animate-in fade-in backdrop-blur-sm">
+            <div className="panel max-w-sm w-full text-center shadow-2xl border border-destructive/50 bg-black/95">
+              <div className="mb-4 text-5xl">⚠️</div>
+              <h2 className="text-xl font-bold mb-2">هل أنت متأكد من الانسحاب؟</h2>
+              <p className="mb-6 text-sm text-destructive font-bold bg-destructive/10 p-3 rounded-lg border border-destructive/20">
+                ملاحظة: سيتم حظرك من اللعب أونلاين لمدة 15 دقيقة كعقوبة.
+              </p>
+              <div className="flex gap-3">
+                <button onClick={() => setShowResignConfirm(false)} className="btn-ghost flex-1 py-3 text-sm">إلغاء</button>
+                <button onClick={() => {
+                  setShowResignConfirm(false);
+                  onResign();
+                }} className="btn-game bg-destructive/80 hover:bg-destructive flex-1 py-3 text-sm">نعم، انسحب</button>
               </div>
             </div>
           </div>
