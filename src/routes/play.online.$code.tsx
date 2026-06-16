@@ -254,19 +254,22 @@ function RoomPage() {
   async function doRoll() {
     if (!game || mySeat !== game.turn || rolling) return;
     setRolling(true);
+    
+    const d = rollDice();
+    const next = recordRoll(game, d);
+    
     playRollSound();
 
+    const intermediate = { ...game, dice: d, awaitingMove: false, sixCount: game.sixCount };
+    await handleStateChange(intermediate);
+
+    const waitTime = next.dice === null ? 1000 : 600;
+
     setTimeout(async () => {
-      const d = rollDice();
       setRolling(false);
-      const next = recordRoll(game, d);
       
       if (next.dice === null) {
-        const intermediate = { ...game, dice: d, awaitingMove: false, sixCount: next.sixCount };
-        await handleStateChange(intermediate);
-        setTimeout(async () => {
-          await handleStateChange(next);
-        }, 1200);
+        await handleStateChange(next);
       } else {
         const moves = legalMoves(next, d);
         let autoMoveIdx = -1;
@@ -278,17 +281,13 @@ function RoomPage() {
         }
 
         if (autoMoveIdx >= 0) {
-          const intermediate = { ...next, awaitingMove: false };
-          await handleStateChange(intermediate);
-          setTimeout(async () => {
-            const finalState = applyMove(next, autoMoveIdx);
-            await handleStateChange(finalState);
-          }, 600);
+          const finalState = applyMove(next, autoMoveIdx);
+          await handleStateChange(finalState);
         } else {
           await handleStateChange(next);
         }
       }
-    }, 600);
+    }, waitTime);
   }
   async function doMove(_seat: number, tokenIdx: number) {
     if (!game || mySeat !== game.turn) return;
@@ -918,7 +917,7 @@ function OnlineMatch({ game, room, mySeat, profiles, userId, doRoll, doMove, rol
                 </div>
               </div>
               <div className="mt-4 flex items-center justify-between">
-                <Dice value={displayGame.dice} rolling={rolling} size={72} />
+                <Dice value={displayGame.dice} rolling={false} size={72} />
                 <button onClick={doRoll} disabled={!canRoll} className="btn-game">
                   {rolling ? "..." : myTurn ? (game.awaitingMove ? "Choose token" : "Roll dice") : "Waiting…"}
                 </button>
