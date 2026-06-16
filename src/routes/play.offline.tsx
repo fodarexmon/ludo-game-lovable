@@ -30,7 +30,7 @@ function OfflinePage() {
   const profile = useMemo(() => loadProfile(), []);
   const [seats, setSeats] = useState<Seat[]>([
     { kind: "human", name: profile.displayName, avatarId: profile.avatarId },
-    { kind: "ai", name: "Bot Red", avatarId: "a3" },
+    { kind: "ai", name: "Bot Green", avatarId: "a3" },
     { kind: "ai", name: "Bot Yellow", avatarId: "a5" },
     { kind: "off", name: "Bot Blue", avatarId: "a8" },
   ]);
