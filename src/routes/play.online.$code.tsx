@@ -831,7 +831,7 @@ function OnlineMatch({ game, room, mySeat, profiles, userId, doRoll, doMove, rol
     <div className={`min-h-screen p-3 md:p-6 relative overflow-hidden ${killVfx?.active ? 'animate-shake' : ''}`}>
       <ChatAnimator chats={room.chats} players={room.players || []} profiles={profiles} />
       <ChatMenu room={room} userId={userId} players={room.players || []} profiles={profiles} code={code} />
-      {isGameOver && <Podium game={game} onHome={leave} />}
+      {isGameOver && <Podium game={game} onHome={leave} room={room} />}
       <div className="mx-auto max-w-6xl">
         <div className="mb-3 flex items-center justify-between">
           <button onClick={leave} className="btn-ghost">← Leave</button>
@@ -952,7 +952,14 @@ function OnlineMatch({ game, room, mySeat, profiles, userId, doRoll, doMove, rol
                       <Avatar id={p.avatarId} size={40} />
                       <div className="flex-1 text-left">
                         <div className="font-bold text-lg leading-tight">{p.name}</div>
-                        <div className="text-xs text-muted-foreground">+{matchPts} pts (Total: {totalPts})</div>
+                        <div className="text-xs text-muted-foreground flex items-center gap-1">
+                          +{matchPts} pts (Total: {totalPts})
+                          {room.coinsEarned?.[p.userId] ? (
+                            <span className="ml-1 text-yellow-400 font-bold flex items-center gap-1">
+                              • +{room.coinsEarned[p.userId]} <img src="/coin.png" alt="coins" className="w-3 h-3 inline" />
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
                       
                       {userId !== p.userId && !myFriends.has(p.userId || '') && (
