@@ -25,4 +25,5 @@ export interface GameState {
   resigned: number[];         // seat indexes that resigned
   lastMove?: { seat: number; token: number; from: number; to: number; capture?: { seat: number; token: number }[]; timestamp?: number } | null;
   turnStartTime: number;      // timestamp when the current turn or action phase started
+  stats?: { kills: Record<number, number>; deaths: Record<number, number> };
 }

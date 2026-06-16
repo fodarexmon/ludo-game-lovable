@@ -71,6 +71,7 @@ export function applyMove(state: GameState, tokenIdx: number): GameState {
   s.tokens[seat][tokenIdx] = to;
 
   // capture?
+  if (!s.stats) s.stats = { kills: {}, deaths: {} };
   const captures: { seat: number; token: number }[] = [];
   const absIdx = trackIndexFor(player.color, to);
   if (absIdx !== null && !SAFE_SQUARES.has(absIdx)) {
@@ -83,6 +84,10 @@ export function applyMove(state: GameState, tokenIdx: number): GameState {
         if (oAbs === absIdx) {
           s.tokens[other][ot] = 0;
           captures.push({ seat: other, token: ot });
+          if (!s.stats.kills[seat]) s.stats.kills[seat] = 0;
+          s.stats.kills[seat]++;
+          if (!s.stats.deaths[other]) s.stats.deaths[other] = 0;
+          s.stats.deaths[other]++;
         }
       }
     }

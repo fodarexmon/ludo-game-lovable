@@ -58,8 +58,9 @@ function HomePage() {
           <Link to="/play/online" className="btn-game text-lg">🌐 Play Online</Link>
           <div className="grid grid-cols-2 gap-3 mt-2">
             <Link to="/friends" className="btn-ghost !py-4 text-sm whitespace-nowrap !bg-gradient-to-r !from-sky-500/20 !to-blue-600/20 !border-sky-500/50 hover:!from-sky-500/40 hover:!to-blue-600/40">👥 الأصدقاء</Link>
-            <Link to="/leaderboard" className="btn-ghost !py-4 text-sm whitespace-nowrap">🏆 لوحة الشرف</Link>
-            <Link to="/settings" className="btn-ghost !py-4 text-sm whitespace-nowrap col-span-2">⚙️ Settings</Link>
+            <Link to="/achievements" className="btn-ghost !py-4 text-sm whitespace-nowrap !bg-gradient-to-r !from-yellow-500/20 !to-amber-600/20 !border-yellow-500/50 hover:!from-yellow-500/40 hover:!to-amber-600/40">🏆 الإنجازات</Link>
+            <Link to="/leaderboard" className="btn-ghost !py-4 text-sm whitespace-nowrap">🥇 لوحة الشرف</Link>
+            <Link to="/settings" className="btn-ghost !py-4 text-sm whitespace-nowrap">⚙️ Settings</Link>
           </div>
         </div>
       </div>

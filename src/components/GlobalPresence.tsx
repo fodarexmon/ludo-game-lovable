@@ -1,9 +1,11 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { auth, db } from "@/integrations/firebase/client";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, setDoc, getDoc, onSnapshot, collection, deleteDoc } from "firebase/firestore";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
+import { useAchievements } from "@/hooks/useAchievements";
+import { AchievementPopup } from "@/components/AchievementPopup";
 
 // Generates a 6-character friend code
 function generateFriendCode() {
@@ -14,6 +16,8 @@ function generateFriendCode() {
 export function GlobalPresence() {
   const nav = useNavigate();
   const userIdRef = useRef<string | null>(null);
+  const [profileData, setProfileData] = useState<any>(null);
+  const { newAchievement, clearAchievement } = useAchievements(userIdRef.current, profileData);
 
   useEffect(() => {
     let unsubInvites: () => void;
@@ -23,18 +27,19 @@ export function GlobalPresence() {
         userIdRef.current = user.uid;
         const profileRef = doc(db, "profiles", user.uid);
         
-        // Fetch profile to check if friendCode exists
         let currentFriendCode = "";
-        try {
-          const snap = await getDoc(profileRef);
-          if (snap.exists() && snap.data().friendCode) {
-            currentFriendCode = snap.data().friendCode;
-          } else {
-            currentFriendCode = generateFriendCode();
+        const unsubProfile = onSnapshot(profileRef, (snap) => {
+          if (snap.exists()) {
+            const data = snap.data();
+            setProfileData(data);
+            if (data.friendCode) {
+              currentFriendCode = data.friendCode;
+            } else if (!currentFriendCode) {
+              currentFriendCode = generateFriendCode();
+              setDoc(profileRef, { friendCode: currentFriendCode }, { merge: true });
+            }
           }
-        } catch (e) {
-          console.error("Error fetching profile", e);
-        }
+        });
 
         // Update presence and friendCode
         const updatePresence = async () => {
@@ -85,6 +90,7 @@ export function GlobalPresence() {
         return () => {
           clearInterval(intervalId);
           if (unsubInvites) unsubInvites();
+          if (unsubProfile) unsubProfile();
         };
       } else {
         if (userIdRef.current) {
@@ -110,5 +116,9 @@ export function GlobalPresence() {
     };
   }, [nav]);
 
-  return null;
+  return (
+    <>
+      {newAchievement && <AchievementPopup achievement={newAchievement} onClose={clearAchievement} />}
+    </>
+  );
 }

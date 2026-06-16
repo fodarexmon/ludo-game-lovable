@@ -44,7 +44,7 @@ function RoomPage() {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (!user) { nav({ to: "/auth" }); return; }
       setUserId(user.uid);
-      
+
       unsubFriends = onSnapshot(collection(db, `profiles/${user.uid}/friends`), snap => {
         setMyFriends(new Set(snap.docs.map(d => d.id)));
       });
@@ -57,7 +57,7 @@ function RoomPage() {
 
   useEffect(() => {
     if (!userId) return;
-    
+
     const roomRef = doc(db, "rooms", code);
     const unsub = onSnapshot(roomRef, async (docSnap) => {
       if (!docSnap.exists()) {
@@ -66,10 +66,10 @@ function RoomPage() {
       }
       const r = docSnap.data() as RoomRow;
       setRoom(r);
-      
+
       const pl = r.players || [];
       setPlayers(pl);
-      
+
       const ids = pl.map((p) => p.user_id);
       if (ids.length) {
         const q = query(collection(db, "profiles"), where("id", "in", ids));
@@ -118,8 +118,8 @@ function RoomPage() {
   async function nextMatch() {
     if (!room || !isHost || !game) return;
     const init = createGame(game.players);
-    await updateDoc(doc(db, "rooms", code), { 
-      status: "playing", 
+    await updateDoc(doc(db, "rooms", code), {
+      status: "playing",
       state: init as any,
       matchCount: (room.matchCount || 1) + 1
     });
@@ -142,8 +142,8 @@ function RoomPage() {
   async function toggleReady() {
     if (!room || !userId) return;
     const currentReady = room.readyPlayers || [];
-    const newReady = currentReady.includes(userId) 
-      ? currentReady.filter(id => id !== userId) 
+    const newReady = currentReady.includes(userId)
+      ? currentReady.filter(id => id !== userId)
       : [...currentReady, userId];
     await updateDoc(doc(db, "rooms", code), { readyPlayers: newReady });
   }
@@ -201,18 +201,18 @@ function RoomPage() {
     const isGameOver = gameOver(next);
     let status = undefined;
     let updates: any = undefined;
-    
+
     if (isGameOver) {
       status = "finished";
       const board = [...next.winners];
       next.players.forEach((p, i) => { if (!board.includes(i) && !p.hasResigned) board.push(i); });
       const reversedResigned = [...(next.resigned || [])].reverse();
       reversedResigned.forEach((i) => { if (!board.includes(i)) board.push(i); });
-      
+
       const newScores = { ...(room?.scores || {}) };
       const newCoinsEarned: Record<string, number> = {};
       const numPlayers = next.players.length;
-      
+
       const getPoints = (num: number, rank: number) => {
         if (num === 2) return rank === 0 ? 2 : 0;
         if (num === 3) return rank === 0 ? 3 : (rank === 1 ? 1 : 0);
@@ -232,7 +232,7 @@ function RoomPage() {
         if (p && p.userId) {
           const points = getPoints(numPlayers, index);
           newScores[p.userId] = (newScores[p.userId] || 0) + points;
-          
+
           const earnedCoins = getCoins(numPlayers, index);
           newCoinsEarned[p.userId] = earnedCoins;
 
@@ -254,10 +254,10 @@ function RoomPage() {
   async function doRoll() {
     if (!game || mySeat !== game.turn || rolling) return;
     setRolling(true);
-    
+
     const d = rollDice();
     const next = recordRoll(game, d);
-    
+
     playRollSound();
 
     const intermediate = { ...game, dice: d, awaitingMove: false, sixCount: game.sixCount };
@@ -267,7 +267,7 @@ function RoomPage() {
 
     setTimeout(async () => {
       setRolling(false);
-      
+
       if (next.dice === null) {
         await handleStateChange(next);
       } else {
@@ -314,12 +314,12 @@ function RoomPage() {
             await handleStateChange(applyMove(game, t));
           } else {
             const fallback = applyMove(game, 0);
-            await handleStateChange(fallback).catch(() => {});
+            await handleStateChange(fallback).catch(() => { });
           }
         }
       }
     };
-    
+
     const interval = setInterval(checkTimer, 1000);
     return () => clearInterval(interval);
   }, [game, room, isHost]);
@@ -355,7 +355,7 @@ function RoomPage() {
         <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-accent/20 blur-[120px] rounded-full pointer-events-none" />
         <div className="mx-auto max-w-2xl w-full z-10">
           <button onClick={leave} className="btn-ghost mb-6 bg-background/50 backdrop-blur-md">← Leave Room</button>
-          
+
           <div className="text-center mb-8">
             <h1 className="text-4xl font-extrabold tracking-tight mb-3 text-transparent bg-clip-text bg-gradient-to-r from-white to-white/60">
               {room.isQuickMatch ? "اللعب السريع ⚡" : "Room Lobby"}
@@ -389,7 +389,7 @@ function RoomPage() {
                   const isOnline = prof.isOnline && prof.lastActive && (Date.now() - prof.lastActive < 120000);
                   if (!isOnline) return null;
                   return (
-                    <button 
+                    <button
                       key={fid}
                       onClick={async () => {
                         try {
@@ -401,7 +401,7 @@ function RoomPage() {
                             timestamp: Date.now()
                           });
                           toast.success(`تم إرسال الدعوة إلى ${prof.display_name}`);
-                        } catch(e) {
+                        } catch (e) {
                           toast.error("حدث خطأ أثناء الإرسال");
                         }
                       }}
@@ -461,13 +461,12 @@ function RoomPage() {
           </div>
           <div className="mt-8">
             {room.isQuickMatch ? (
-              <button 
-                onClick={toggleReady} 
-                className={`w-full text-xl py-4 shadow-xl transition-all font-bold rounded-xl border ${
-                  room.readyPlayers?.includes(userId || '') 
-                    ? 'bg-destructive/80 hover:bg-destructive border-destructive text-white shadow-destructive/20' 
-                    : 'btn-game shadow-green-500/20 hover:shadow-green-500/40'
-                }`}
+              <button
+                onClick={toggleReady}
+                className={`w-full text-xl py-4 shadow-xl transition-all font-bold rounded-xl border ${room.readyPlayers?.includes(userId || '')
+                  ? 'bg-destructive/80 hover:bg-destructive border-destructive text-white shadow-destructive/20'
+                  : 'btn-game shadow-green-500/20 hover:shadow-green-500/40'
+                  }`}
               >
                 {room.readyPlayers?.includes(userId || '') ? "إلغاء الجاهزية ❌" : "جاهز للعب ✅"}
               </button>
@@ -500,7 +499,7 @@ function ChatAnimator({ chats, players, profiles }: { chats: Record<string, Chat
     const now = Date.now();
     const recent = Object.values(chats).filter(c => now - c.timestamp < 5000);
     setActiveChats(recent);
-    
+
     const timeout = setTimeout(() => {
       setActiveChats(prev => prev.filter(c => Date.now() - c.timestamp < 5000));
     }, 5000);
@@ -523,7 +522,7 @@ function AnimatedMessage({ chat, players }: { chat: ChatMessage, players: any[] 
   useEffect(() => {
     const senderColor = players.find(p => p.user_id === chat.senderId)?.color;
     const receiverColor = chat.receiverId ? players.find(p => p.user_id === chat.receiverId)?.color : undefined;
-    
+
     const senderEl = document.getElementById(senderColor ? `base-${senderColor}` : "board-center");
     const receiverEl = receiverColor ? document.getElementById(`base-${receiverColor}`) : document.getElementById("board-center");
 
@@ -589,7 +588,7 @@ function AnimatedMessage({ chat, players }: { chat: ChatMessage, players: any[] 
 function ChatMenu({ room, userId, players, profiles, code }: { room: RoomRow, userId: string, players: any[], profiles: any, code: string }) {
   const [isOpen, setIsOpen] = useState(false);
   const [tab, setTab] = useState<"phrases" | "emojis">("phrases");
-  const [selectedContent, setSelectedContent] = useState<{ type: "text"|"emoji", content: string } | null>(null);
+  const [selectedContent, setSelectedContent] = useState<{ type: "text" | "emoji", content: string } | null>(null);
 
   const PHRASES = [
     "أسرع من فضلك! ⏱️", "لعبة جيدة! 🤝", "يا إلهي! 😱", "حظاً موفقاً! 🍀", "واو! 🤯", "هل تمزح معي؟! 😠",
@@ -618,9 +617,9 @@ function ChatMenu({ room, userId, players, profiles, code }: { room: RoomRow, us
       receiverId,
       timestamp: Date.now()
     };
-    
+
     const { doc, updateDoc, increment } = await import("firebase/firestore");
-    
+
     // Deduct coins
     try {
       await updateDoc(doc(db, "profiles", userId), {
@@ -636,14 +635,14 @@ function ChatMenu({ room, userId, players, profiles, code }: { room: RoomRow, us
     await updateDoc(doc(db, "rooms", code), {
       [`chats.${userId}`]: chat
     });
-    
+
     setIsOpen(false);
     setSelectedContent(null);
   }
 
   return (
     <>
-      <button 
+      <button
         onClick={() => setIsOpen(true)}
         className="fixed bottom-6 right-6 w-16 h-16 bg-primary rounded-full shadow-[0_0_20px_rgba(var(--primary),0.5)] flex items-center justify-center text-3xl hover:scale-110 transition-transform z-40"
       >
@@ -692,7 +691,7 @@ function ChatMenu({ room, userId, players, profiles, code }: { room: RoomRow, us
                     {selectedContent.content}
                   </div>
                 </div>
-                
+
                 <div className="grid gap-2">
                   <button onClick={() => sendChat()} className="p-4 bg-gradient-to-r from-primary to-accent rounded-xl font-bold text-lg hover:brightness-110 transition-all text-white shadow-lg">
                     الجميع 🌐
@@ -715,7 +714,7 @@ function ChatMenu({ room, userId, players, profiles, code }: { room: RoomRow, us
 
 function OnlineMatch({ game, room, mySeat, profiles, userId, doRoll, doMove, rolling, leave, onResign, onKick, isHost, nextMatch, code, myFriends }: any) {
   const { animatedGame, isAnimating, killVfx } = useGameAnimation(game);
-  
+
   const displayGame = animatedGame || game;
   const currentPlayer = game.players[game.turn];
   const isGameOver = gameOver(game);
@@ -744,7 +743,7 @@ function OnlineMatch({ game, room, mySeat, profiles, userId, doRoll, doMove, rol
         [`lastActive.${userId}`]: Date.now()
       });
     };
-    
+
     measurePing();
     const interval = setInterval(measurePing, 10000);
     return () => clearInterval(interval);
@@ -780,7 +779,7 @@ function OnlineMatch({ game, room, mySeat, profiles, userId, doRoll, doMove, rol
           currentOffline.add(p.user_id);
         }
       });
-      
+
       setOfflinePlayers(prev => {
         currentOffline.forEach(id => {
           if (!prev.has(id)) {
@@ -846,10 +845,10 @@ function OnlineMatch({ game, room, mySeat, profiles, userId, doRoll, doMove, rol
     const updateMyStats = async () => {
       setStatsUpdated(true);
       localStorage.setItem(`stats_${matchId}`, "1");
-      
+
       const myPlayer = game.players.find((p: any) => p.userId === userId);
       if (!myPlayer) return;
-      
+
       const board = [...game.winners];
       game.players.forEach((p: any, i: number) => { if (!board.includes(i) && !p.hasResigned) board.push(i); });
       const reversedResigned = [...(game.resigned || [])].reverse();
@@ -860,14 +859,49 @@ function OnlineMatch({ game, room, mySeat, profiles, userId, doRoll, doMove, rol
 
       const profileRef = doc(db, "profiles", userId);
       try {
+        const snap = await getDoc(profileRef);
+        const currentStats = snap.data()?.stats || {};
+        
+        let currentWinStreak = currentStats.currentWinStreak || 0;
+        let maxWinStreak = currentStats.maxWinStreak || 0;
+        if (isWin) {
+          currentWinStreak++;
+          if (currentWinStreak > maxWinStreak) maxWinStreak = currentWinStreak;
+        } else {
+          currentWinStreak = 0;
+        }
+
+        const piecesEatenInMatch = game.stats?.kills?.[myPlayer.seat] || 0;
+        const deathsInMatch = game.stats?.deaths?.[myPlayer.seat] || 0;
+        
+        let flawlessWins = currentStats.flawlessWins || 0;
+        if (isWin && deathsInMatch === 0) {
+          flawlessWins++;
+        }
+
         await updateDoc(profileRef, {
           "stats.gamesPlayed": increment(1),
           "stats.totalPoints": increment(points),
-          "stats.wins": increment(isWin ? 1 : 0)
+          "stats.wins": increment(isWin ? 1 : 0),
+          "stats.piecesEaten": increment(piecesEatenInMatch),
+          "stats.currentWinStreak": currentWinStreak,
+          "stats.maxWinStreak": maxWinStreak,
+          "stats.flawlessWins": flawlessWins
         });
       } catch {
+        const piecesEatenInMatch = game.stats?.kills?.[myPlayer.seat] || 0;
+        const deathsInMatch = game.stats?.deaths?.[myPlayer.seat] || 0;
+        const flawlessWins = (isWin && deathsInMatch === 0) ? 1 : 0;
         await setDoc(profileRef, {
-          stats: { gamesPlayed: 1, totalPoints: points, wins: isWin ? 1 : 0 }
+          stats: { 
+            gamesPlayed: 1, 
+            totalPoints: points, 
+            wins: isWin ? 1 : 0,
+            piecesEaten: piecesEatenInMatch,
+            currentWinStreak: isWin ? 1 : 0,
+            maxWinStreak: isWin ? 1 : 0,
+            flawlessWins: flawlessWins
+          }
         }, { merge: true });
       }
     };
@@ -930,66 +964,67 @@ function OnlineMatch({ game, room, mySeat, profiles, userId, doRoll, doMove, rol
                 const ping = room.pings?.[p.userId];
                 const isStale = offlinePlayers.has(p.userId);
                 return (
-                <div key={i} className="relative">
-                  <div onClick={() => { if (p.userId !== userId) setReactionTarget(i); }} className={p.userId !== userId ? "cursor-pointer transition-transform hover:scale-[1.02]" : ""}>
-                    <PlayerCard player={p} active={i === displayGame.turn && !isGameOver} finishedCount={finishedCount(i)} ping={ping} isStale={isStale} />
-                  </div>
-                  {p.userId === userId && !isHost && !isGameOver && (
-                    <button 
-                      onClick={() => setShowResignConfirm(true)} 
-                      className="absolute right-3 top-1/2 -translate-y-1/2 px-2 py-1 bg-destructive/10 text-destructive text-xs font-bold rounded hover:bg-destructive/20 border border-destructive/30"
-                      title="انسحاب"
-                    >
-                      🏳️ انسحاب
-                    </button>
-                  )}
-                  {isHost && p.userId !== userId && !isGameOver && displayGame.players.length > 2 && displayGame.players.filter((rp: any) => !rp.hasResigned).length > 2 && (
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); onKick(i); }} 
-                      className="absolute right-3 top-1/2 -translate-y-1/2 px-2 py-1 bg-destructive/10 text-destructive text-xs font-bold rounded hover:bg-destructive/20 border border-destructive/30"
-                      title="طرد اللاعب"
-                    >
-                      👢 طرد
-                    </button>
-                  )}
-                  {reactionTarget === i && (
-                    <div className="absolute top-full right-0 z-50 mt-2 w-64 p-4 bg-black/90 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl animate-in fade-in zoom-in-95">
-                      <div className="flex items-center gap-3 mb-4 border-b border-white/10 pb-3">
-                        <Avatar id={p.avatarId} size={48} />
-                        <div>
-                          <div className="font-bold">{p.name}</div>
-                          <div className="text-xs text-muted-foreground">{prof?.country || 'Unknown'}</div>
-                        </div>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-2 mb-4 text-center">
-                        <div className="bg-white/5 rounded-lg p-2">
-                          <div className="text-xl font-bold text-primary">{prof?.stats?.totalPoints || 0}</div>
-                          <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Points</div>
-                        </div>
-                        <div className="bg-white/5 rounded-lg p-2">
-                          <div className="text-xl font-bold text-accent">{prof?.stats?.wins || 0}</div>
-                          <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Wins</div>
-                        </div>
-                        <div className="bg-white/5 rounded-lg p-2 col-span-2">
-                          <div className="text-sm font-bold text-white">{prof?.stats?.gamesPlayed ? Math.round((prof.stats.wins / prof.stats.gamesPlayed) * 100) : 0}%</div>
-                          <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Win Rate ({prof?.stats?.gamesPlayed || 0} matches)</div>
-                        </div>
-                      </div>
-
-                      <div className="text-xs text-muted-foreground mb-2 uppercase tracking-wider text-center">Send Reaction</div>
-                      <div className="flex justify-center gap-2">
-                        {["😂", "😡", "😢", "👋", "GG!"].map(emoji => (
-                          <button key={emoji} onClick={() => sendReaction(i, emoji)} className="text-xl hover:scale-125 transition-transform bg-white/5 hover:bg-white/20 rounded-full w-10 h-10 flex items-center justify-center">
-                            {emoji}
-                          </button>
-                        ))}
-                      </div>
-                      <button onClick={(e) => { e.stopPropagation(); setReactionTarget(null); }} className="absolute top-2 right-2 text-muted-foreground hover:text-white w-6 h-6 flex items-center justify-center rounded-full bg-white/10">✕</button>
+                  <div key={i} className="relative">
+                    <div onClick={() => { if (p.userId !== userId) setReactionTarget(i); }} className={p.userId !== userId ? "cursor-pointer transition-transform hover:scale-[1.02]" : ""}>
+                      <PlayerCard player={p} active={i === displayGame.turn && !isGameOver} finishedCount={finishedCount(i)} ping={ping} isStale={isStale} />
                     </div>
-                  )}
-                </div>
-              )})}
+                    {p.userId === userId && !isHost && !isGameOver && (
+                      <button
+                        onClick={() => setShowResignConfirm(true)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 px-2 py-1 bg-destructive/10 text-destructive text-xs font-bold rounded hover:bg-destructive/20 border border-destructive/30"
+                        title="انسحاب"
+                      >
+                        🏳️ انسحاب
+                      </button>
+                    )}
+                    {isHost && p.userId !== userId && !isGameOver && displayGame.players.length > 2 && displayGame.players.filter((rp: any) => !rp.hasResigned).length > 2 && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onKick(i); }}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 px-2 py-1 bg-destructive/10 text-destructive text-xs font-bold rounded hover:bg-destructive/20 border border-destructive/30"
+                        title="طرد اللاعب"
+                      >
+                        👢 طرد
+                      </button>
+                    )}
+                    {reactionTarget === i && (
+                      <div className="absolute top-full right-0 z-50 mt-2 w-64 p-4 bg-black/90 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl animate-in fade-in zoom-in-95">
+                        <div className="flex items-center gap-3 mb-4 border-b border-white/10 pb-3">
+                          <Avatar id={p.avatarId} size={48} />
+                          <div>
+                            <div className="font-bold">{p.name}</div>
+                            <div className="text-xs text-muted-foreground">{prof?.country || 'Unknown'}</div>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 mb-4 text-center">
+                          <div className="bg-white/5 rounded-lg p-2">
+                            <div className="text-xl font-bold text-primary">{prof?.stats?.totalPoints || 0}</div>
+                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Points</div>
+                          </div>
+                          <div className="bg-white/5 rounded-lg p-2">
+                            <div className="text-xl font-bold text-accent">{prof?.stats?.wins || 0}</div>
+                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Wins</div>
+                          </div>
+                          <div className="bg-white/5 rounded-lg p-2 col-span-2">
+                            <div className="text-sm font-bold text-white">{prof?.stats?.gamesPlayed ? Math.round((prof.stats.wins / prof.stats.gamesPlayed) * 100) : 0}%</div>
+                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Win Rate ({prof?.stats?.gamesPlayed || 0} matches)</div>
+                          </div>
+                        </div>
+
+                        <div className="text-xs text-muted-foreground mb-2 uppercase tracking-wider text-center">Send Reaction</div>
+                        <div className="flex justify-center gap-2">
+                          {["😂", "😡", "😢", "👋", "GG!"].map(emoji => (
+                            <button key={emoji} onClick={() => sendReaction(i, emoji)} className="text-xl hover:scale-125 transition-transform bg-white/5 hover:bg-white/20 rounded-full w-10 h-10 flex items-center justify-center">
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                        <button onClick={(e) => { e.stopPropagation(); setReactionTarget(null); }} className="absolute top-2 right-2 text-muted-foreground hover:text-white w-6 h-6 flex items-center justify-center rounded-full bg-white/10">✕</button>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           </div>
         </div>
@@ -1026,16 +1061,16 @@ function OnlineMatch({ game, room, mySeat, profiles, userId, doRoll, doMove, rol
                           ) : null}
                         </div>
                       </div>
-                      
+
                       {userId !== p.userId && !myFriends.has(p.userId || '') && (
-                        <button 
+                        <button
                           onClick={async () => {
                             if (!userId || !p.userId) return;
                             try {
                               await setDoc(doc(db, `profiles/${userId}/friends`, p.userId), { id: p.userId, addedAt: Date.now() });
                               await setDoc(doc(db, `profiles/${p.userId}/friends`, userId), { id: userId, addedAt: Date.now() });
                               toast.success(`تمت إضافة ${p.name} إلى أصدقائك!`);
-                            } catch(e) {
+                            } catch (e) {
                               toast.error("حدث خطأ أثناء إضافة الصديق.");
                             }
                           }}
