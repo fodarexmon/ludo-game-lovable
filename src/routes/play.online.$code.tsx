@@ -62,6 +62,36 @@ function RoomPage() {
           }
         }
         updateDoc(doc(db, "rooms", code), updates).catch(() => {});
+      } else if (r.status === "playing" && r.state) {
+        const mySeat = pl.find(p => p.user_id === uid)?.seat ?? -1;
+        const game = r.state as any;
+        if (mySeat !== -1 && !game.resigned?.includes(mySeat) && !game.winners?.includes(mySeat)) {
+          const next = resignPlayer(game, mySeat);
+          updateDoc(doc(db, "rooms", code), { 
+            state: next,
+            [`reactions.${mySeat}`]: { emoji: "🏳️", sender: mySeat, timestamp: Date.now() }
+          }).catch(() => {});
+
+          // Apply ban for leaving mid-game
+          getDoc(doc(db, "profiles", uid)).then(pDoc => {
+            if (pDoc.exists()) {
+              const now = new Date();
+              const today = now.toISOString().split('T')[0];
+              let newBan = { until: Date.now() + 15 * 60 * 1000, count: 1, lastBanDay: today };
+              const oldBans = pDoc.data().bans;
+              if (oldBans && oldBans.lastBanDay === today) {
+                const newCount = oldBans.count + 1;
+                if (newCount >= 3) {
+                  const eod = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).getTime();
+                  newBan = { until: eod, count: newCount, lastBanDay: today };
+                } else {
+                  newBan.count = newCount;
+                }
+              }
+              updateDoc(doc(db, "profiles", uid), { bans: newBan }).catch(()=>{});
+            }
+          }).catch(()=>{});
+        }
       }
     };
 
