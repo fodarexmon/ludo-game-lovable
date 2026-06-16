@@ -12,6 +12,7 @@ import { loadProfile } from "@/lib/profile";
 import { AVATARS } from "@/data/avatars";
 import { playRollSound } from "@/lib/audio";
 import { useGameAnimation } from "@/hooks/useGameAnimation";
+import { Podium } from "@/components/Podium";
 
 export const Route = createFileRoute("/play/offline")({
   head: () => ({
@@ -187,7 +188,8 @@ function Match({ game, setGame, onExit }: { game: GameState; setGame: (g: GameSt
   }, [game, isGameOver]);
 
   return (
-    <div className="min-h-screen p-3 md:p-6">
+    <div className="min-h-screen p-3 md:p-6 relative">
+      {isGameOver && <Podium game={game} onHome={onExit} />}
       <div className="mx-auto max-w-6xl">
         <div className="mb-3 flex items-center justify-between">
           <button onClick={onExit} className="btn-ghost">← Leave</button>

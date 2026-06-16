@@ -13,6 +13,7 @@ import { chooseMove } from "@/game/ai";
 import type { GameState, Player } from "@/game/types";
 import { playRollSound, playMoveSound, playCaptureSound, playFinishSound, playWinSound } from "@/lib/audio";
 import { useGameAnimation } from "@/hooks/useGameAnimation";
+import { Podium } from "@/components/Podium";
 
 export const Route = createFileRoute("/play/online/$code")({
   head: () => ({ meta: [{ title: "Online Room — Ludo Star" }] }),
@@ -425,7 +426,8 @@ function OnlineMatch({ game, room, mySeat, profiles, userId, doRoll, doMove, rol
   }
 
   return (
-    <div className="min-h-screen p-3 md:p-6">
+    <div className="min-h-screen p-3 md:p-6 relative overflow-hidden">
+      {isGameOver && <Podium game={game} onHome={leave} />}
       <div className="mx-auto max-w-6xl">
         <div className="mb-3 flex items-center justify-between">
           <button onClick={leave} className="btn-ghost">← Leave</button>
