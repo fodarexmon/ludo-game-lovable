@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as LeaderboardRouteImport } from './routes/leaderboard'
+import { Route as InstructionsRouteImport } from './routes/instructions'
 import { Route as FriendsRouteImport } from './routes/friends'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AchievementsRouteImport } from './routes/achievements'
@@ -27,6 +28,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const LeaderboardRoute = LeaderboardRouteImport.update({
   id: '/leaderboard',
   path: '/leaderboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InstructionsRoute = InstructionsRouteImport.update({
+  id: '/instructions',
+  path: '/instructions',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FriendsRoute = FriendsRouteImport.update({
@@ -70,6 +76,7 @@ export interface FileRoutesByFullPath {
   '/achievements': typeof AchievementsRoute
   '/auth': typeof AuthRoute
   '/friends': typeof FriendsRoute
+  '/instructions': typeof InstructionsRoute
   '/leaderboard': typeof LeaderboardRoute
   '/settings': typeof SettingsRoute
   '/play/offline': typeof PlayOfflineRoute
@@ -81,6 +88,7 @@ export interface FileRoutesByTo {
   '/achievements': typeof AchievementsRoute
   '/auth': typeof AuthRoute
   '/friends': typeof FriendsRoute
+  '/instructions': typeof InstructionsRoute
   '/leaderboard': typeof LeaderboardRoute
   '/settings': typeof SettingsRoute
   '/play/offline': typeof PlayOfflineRoute
@@ -93,6 +101,7 @@ export interface FileRoutesById {
   '/achievements': typeof AchievementsRoute
   '/auth': typeof AuthRoute
   '/friends': typeof FriendsRoute
+  '/instructions': typeof InstructionsRoute
   '/leaderboard': typeof LeaderboardRoute
   '/settings': typeof SettingsRoute
   '/play/offline': typeof PlayOfflineRoute
@@ -106,6 +115,7 @@ export interface FileRouteTypes {
     | '/achievements'
     | '/auth'
     | '/friends'
+    | '/instructions'
     | '/leaderboard'
     | '/settings'
     | '/play/offline'
@@ -117,6 +127,7 @@ export interface FileRouteTypes {
     | '/achievements'
     | '/auth'
     | '/friends'
+    | '/instructions'
     | '/leaderboard'
     | '/settings'
     | '/play/offline'
@@ -128,6 +139,7 @@ export interface FileRouteTypes {
     | '/achievements'
     | '/auth'
     | '/friends'
+    | '/instructions'
     | '/leaderboard'
     | '/settings'
     | '/play/offline'
@@ -140,6 +152,7 @@ export interface RootRouteChildren {
   AchievementsRoute: typeof AchievementsRoute
   AuthRoute: typeof AuthRoute
   FriendsRoute: typeof FriendsRoute
+  InstructionsRoute: typeof InstructionsRoute
   LeaderboardRoute: typeof LeaderboardRoute
   SettingsRoute: typeof SettingsRoute
   PlayOfflineRoute: typeof PlayOfflineRoute
@@ -161,6 +174,13 @@ declare module '@tanstack/react-router' {
       path: '/leaderboard'
       fullPath: '/leaderboard'
       preLoaderRoute: typeof LeaderboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/instructions': {
+      id: '/instructions'
+      path: '/instructions'
+      fullPath: '/instructions'
+      preLoaderRoute: typeof InstructionsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/friends': {
@@ -220,6 +240,7 @@ const rootRouteChildren: RootRouteChildren = {
   AchievementsRoute: AchievementsRoute,
   AuthRoute: AuthRoute,
   FriendsRoute: FriendsRoute,
+  InstructionsRoute: InstructionsRoute,
   LeaderboardRoute: LeaderboardRoute,
   SettingsRoute: SettingsRoute,
   PlayOfflineRoute: PlayOfflineRoute,

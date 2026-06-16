@@ -61,6 +61,7 @@ function HomePage() {
             <Link to="/achievements" className="btn-ghost !py-4 text-sm whitespace-nowrap !bg-gradient-to-r !from-yellow-500/20 !to-amber-600/20 !border-yellow-500/50 hover:!from-yellow-500/40 hover:!to-amber-600/40">🏆 الإنجازات</Link>
             <Link to="/leaderboard" className="btn-ghost !py-4 text-sm whitespace-nowrap">🥇 لوحة الشرف</Link>
             <Link to="/settings" className="btn-ghost !py-4 text-sm whitespace-nowrap">⚙️ Settings</Link>
+            <Link to="/instructions" className="btn-ghost !py-4 text-sm whitespace-nowrap col-span-2 !bg-gradient-to-r !from-purple-500/20 !to-fuchsia-600/20 !border-purple-500/50 hover:!from-purple-500/40 hover:!to-fuchsia-600/40">📖 التعليمات والقواعد</Link>
           </div>
         </div>
       </div>
