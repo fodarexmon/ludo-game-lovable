@@ -182,6 +182,10 @@ function Match({ game, setGame, onExit }: { game: GameState; setGame: (g: GameSt
     if (!isGameOver) return [];
     const board = [...game.winners];
     game.players.forEach((p, i) => {
+      if (!board.includes(i) && !p.hasResigned) board.push(i);
+    });
+    const reversedResigned = [...(game.resigned || [])].reverse();
+    reversedResigned.forEach((i) => {
       if (!board.includes(i)) board.push(i);
     });
     return board;

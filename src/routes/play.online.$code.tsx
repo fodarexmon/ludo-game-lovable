@@ -158,7 +158,9 @@ function RoomPage() {
     if (isGameOver) {
       status = "finished";
       const board = [...next.winners];
-      next.players.forEach((p, i) => { if (!board.includes(i)) board.push(i); });
+      next.players.forEach((p, i) => { if (!board.includes(i) && !p.hasResigned) board.push(i); });
+      const reversedResigned = [...(next.resigned || [])].reverse();
+      reversedResigned.forEach((i) => { if (!board.includes(i)) board.push(i); });
       
       const newScores = { ...(room?.scores || {}) };
       const numPlayers = next.players.length;
@@ -388,9 +390,11 @@ function OnlineMatch({ game, room, mySeat, profiles, userId, doRoll, doMove, rol
 
   const originalMatchRanks = useMemo(() => {
     const board = [...game.winners];
-    game.players.forEach((p: any, i: number) => { if (!board.includes(i)) board.push(i); });
+    game.players.forEach((p: any, i: number) => { if (!board.includes(i) && !p.hasResigned) board.push(i); });
+    const reversedResigned = [...(game.resigned || [])].reverse();
+    reversedResigned.forEach((i) => { if (!board.includes(i)) board.push(i); });
     return board;
-  }, [game.winners, game.players]);
+  }, [game.winners, game.players, game.resigned]);
 
   const leaderboard = useMemo(() => {
     if (!isGameOver) return [];
@@ -421,7 +425,9 @@ function OnlineMatch({ game, room, mySeat, profiles, userId, doRoll, doMove, rol
       if (!myPlayer) return;
       
       const board = [...game.winners];
-      game.players.forEach((p: any, i: number) => { if (!board.includes(i)) board.push(i); });
+      game.players.forEach((p: any, i: number) => { if (!board.includes(i) && !p.hasResigned) board.push(i); });
+      const reversedResigned = [...(game.resigned || [])].reverse();
+      reversedResigned.forEach((i) => { if (!board.includes(i)) board.push(i); });
       const myRank = board.indexOf(myPlayer.seat);
       const points = Math.max(0, game.players.length - myRank);
       const isWin = myRank === 0;
