@@ -175,6 +175,15 @@ function RoomPage() {
     await handleStateChange(next);
   }
 
+  async function onKick(targetSeat: number) {
+    if (!room || !isHost || !game || gameOver(game)) return;
+    await updateDoc(doc(db, "rooms", code), {
+      [`reactions.${targetSeat}`]: { emoji: "👢", sender: targetSeat, timestamp: Date.now() }
+    });
+    const next = resignPlayer(game, targetSeat);
+    await handleStateChange(next);
+  }
+
   async function pushState(newState: GameState, status?: string, additionalRoomUpdates?: any) {
     if (!room || writeLock.current) return;
     writeLock.current = true;
@@ -481,7 +490,7 @@ function RoomPage() {
 
   if (!game) return <div className="p-6 text-center text-muted-foreground">Loading game…</div>;
 
-  return <OnlineMatch game={game} room={room} mySeat={mySeat} profiles={profiles} userId={userId} doRoll={doRoll} doMove={doMove} rolling={rolling} leave={leave} onResign={onResign} isHost={isHost} nextMatch={nextMatch} code={code} myFriends={myFriends} />;
+  return <OnlineMatch game={game} room={room} mySeat={mySeat} profiles={profiles} userId={userId} doRoll={doRoll} doMove={doMove} rolling={rolling} leave={leave} onResign={onResign} onKick={onKick} isHost={isHost} nextMatch={nextMatch} code={code} myFriends={myFriends} />;
 }
 
 function ChatAnimator({ chats, players, profiles }: { chats: Record<string, ChatMessage> | undefined, players: any[], profiles: any }) {
@@ -705,7 +714,7 @@ function ChatMenu({ room, userId, players, profiles, code }: { room: RoomRow, us
   );
 }
 
-function OnlineMatch({ game, room, mySeat, profiles, userId, doRoll, doMove, rolling, leave, onResign, isHost, nextMatch, code, myFriends }: any) {
+function OnlineMatch({ game, room, mySeat, profiles, userId, doRoll, doMove, rolling, leave, onResign, onKick, isHost, nextMatch, code, myFriends }: any) {
   const { animatedGame, isAnimating, killVfx } = useGameAnimation(game);
   
   const displayGame = animatedGame || game;
@@ -932,6 +941,15 @@ function OnlineMatch({ game, room, mySeat, profiles, userId, doRoll, doMove, rol
                       title="انسحاب"
                     >
                       🏳️ انسحاب
+                    </button>
+                  )}
+                  {isHost && p.userId !== userId && !isGameOver && displayGame.players.length > 2 && displayGame.players.filter((rp: any) => !rp.hasResigned).length > 2 && (
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); onKick(i); }} 
+                      className="absolute right-3 top-1/2 -translate-y-1/2 px-2 py-1 bg-destructive/10 text-destructive text-xs font-bold rounded hover:bg-destructive/20 border border-destructive/30"
+                      title="طرد اللاعب"
+                    >
+                      👢 طرد
                     </button>
                   )}
                   {reactionTarget === i && (
