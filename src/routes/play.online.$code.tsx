@@ -570,7 +570,7 @@ function RoomPage() {
 
   if (!game) return <div className="p-6 text-center text-muted-foreground">Loading game…</div>;
 
-  return <OnlineMatch game={game} room={room} mySeat={mySeat} profiles={profiles} userId={userId} doRoll={doRoll} doMove={doMove} rolling={rolling} leave={leave} onResign={onResign} onKick={onKick} isHost={isHost} nextMatch={nextMatch} code={code} myFriends={myFriends} />;
+  return <OnlineMatch game={game} room={room} mySeat={mySeat} profiles={profiles} userId={userId} doRoll={doRoll} doMove={doMove} rolling={rolling} leave={leave} onResign={onResign} onKick={onKick} isHost={isHost} nextMatch={nextMatch} code={code} myFriends={myFriends} navBlocker={navBlocker} />;
 }
 
 function ChatAnimator({ chats, players, profiles }: { chats: Record<string, ChatMessage> | undefined, players: any[], profiles: any }) {
@@ -794,7 +794,7 @@ function ChatMenu({ room, userId, players, profiles, code }: { room: RoomRow, us
   );
 }
 
-function OnlineMatch({ game, room, mySeat, profiles, userId, doRoll, doMove, rolling, leave, onResign, onKick, isHost, nextMatch, code, myFriends }: any) {
+function OnlineMatch({ game, room, mySeat, profiles, userId, doRoll, doMove, rolling, leave, onResign, onKick, isHost, nextMatch, code, myFriends, navBlocker }: any) {
   const { animatedGame, isAnimating, killVfx } = useGameAnimation(game);
 
   const displayGame = animatedGame || game;
