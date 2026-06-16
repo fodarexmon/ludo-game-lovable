@@ -20,7 +20,7 @@ export const Route = createFileRoute("/play/online/$code")({
   component: RoomPage,
 });
 
-interface RoomRow { id?: string; code: string; host_id: string; status: string; state: any; players?: PlayerRow[]; matchCount?: number; scores?: Record<string, number>; reactions?: Record<string, { emoji: string, sender: string, timestamp: number }>; }
+interface RoomRow { id?: string; code: string; host_id: string; status: string; state: any; players?: PlayerRow[]; matchCount?: number; scores?: Record<string, number>; reactions?: Record<string, { emoji: string, sender: string, timestamp: number }>; pings?: Record<string, number>; lastActive?: Record<string, number>; }
 interface PlayerRow { user_id: string; seat: number; color: string; }
 interface ProfileRow { id: string; display_name: string; country: string; avatar_id: string; stats?: { gamesPlayed: number, wins: number, totalPoints: number }; }
 
@@ -373,6 +373,32 @@ function OnlineMatch({ game, room, mySeat, profiles, userId, doRoll, doMove, rol
   const canRoll = myTurn && !game.dice && !game.awaitingMove && !isAnimating && !isGameOver && !rolling;
   const [showResignConfirm, setShowResignConfirm] = useState(false);
 
+  useEffect(() => {
+    if (!room || !userId || isGameOver) return;
+    const measurePing = async () => {
+      let currentPing = 50;
+      if ('connection' in navigator && (navigator as any).connection?.rtt) {
+        currentPing = (navigator as any).connection.rtt;
+      } else {
+        const start = Date.now();
+        try {
+          await fetch('https://www.gstatic.com/generate_204', { mode: 'no-cors', cache: 'no-store' });
+          currentPing = Date.now() - start;
+        } catch {
+          currentPing = 500;
+        }
+      }
+      await updateDoc(doc(db, "rooms", code), {
+        [`pings.${userId}`]: currentPing,
+        [`lastActive.${userId}`]: Date.now()
+      });
+    };
+    
+    measurePing();
+    const interval = setInterval(measurePing, 10000);
+    return () => clearInterval(interval);
+  }, [userId, code, isGameOver]);
+
   const prevDice = useRef<number | null>(null);
   useEffect(() => {
     if (game.dice !== null && prevDice.current === null && !myTurn) { playRollSound(); }
@@ -500,10 +526,13 @@ function OnlineMatch({ game, room, mySeat, profiles, userId, doRoll, doMove, rol
               {displayGame.players.map((p: any, i: number) => {
                 if (p.hasResigned) return null;
                 const prof = profiles?.[p.userId];
+                const ping = room.pings?.[p.userId];
+                const lastActive = room.lastActive?.[p.userId];
+                const isStale = lastActive ? (Date.now() - lastActive > 25000) : false;
                 return (
                 <div key={i} className="relative">
                   <div onClick={() => { if (p.userId !== userId) setReactionTarget(i); }} className={p.userId !== userId ? "cursor-pointer transition-transform hover:scale-[1.02]" : ""}>
-                    <PlayerCard player={p} active={i === displayGame.turn && !isGameOver} finishedCount={finishedCount(i)} />
+                    <PlayerCard player={p} active={i === displayGame.turn && !isGameOver} finishedCount={finishedCount(i)} ping={ping} isStale={isStale} />
                   </div>
                   {p.userId === userId && !isHost && !isGameOver && (
                     <button 

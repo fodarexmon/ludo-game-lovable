@@ -2,7 +2,7 @@ import { Avatar } from "./Avatar";
 import { getCountry } from "@/data/countries";
 import type { Player } from "@/game/types";
 
-export function PlayerCard({ player, active, finishedCount }: { player: Player; active: boolean; finishedCount: number }) {
+export function PlayerCard({ player, active, finishedCount, ping, isStale }: { player: Player; active: boolean; finishedCount: number; ping?: number; isStale?: boolean }) {
   const country = getCountry(player.country || "US");
   const colorHex: Record<string, string> = { red: "#ef4444", green: "#22c55e", yellow: "#eab308", blue: "#3b82f6" };
   return (
@@ -19,6 +19,11 @@ export function PlayerCard({ player, active, finishedCount }: { player: Player; 
         <div className="flex items-center gap-1.5">
           <span className="truncate font-semibold">{player.name}</span>
           <span title={country.name}>{country.flag}</span>
+          {ping !== undefined && player.kind === "remote" && (
+             <span title={isStale ? "متصل بضعف / مفصول" : `${ping}ms`} className={`text-[10px] ml-1 opacity-80 ${isStale || ping >= 300 ? "text-destructive" : ping >= 150 ? "text-yellow-400" : "text-green-500"}`}>
+                {isStale ? "🔴" : (ping >= 150 ? "🟡" : "🟢")}
+             </span>
+          )}
         </div>
         <div className="text-xs text-muted-foreground">
           {player.kind === "ai" ? "Computer" : player.kind === "remote" ? "Online" : "You"} · {finishedCount}/4 home
