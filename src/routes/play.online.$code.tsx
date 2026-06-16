@@ -751,6 +751,7 @@ function OnlineMatch({ game, room, mySeat, profiles, userId, doRoll, doMove, rol
     return () => clearInterval(interval);
   }, [userId, code, isGameOver]);
 
+  const players = room?.players || [];
   const lastActiveRef = useRef<Record<string, number>>({});
   const lastSeenRef = useRef<Record<string, number>>({});
   const [offlinePlayers, setOfflinePlayers] = useState<Set<string>>(new Set());
