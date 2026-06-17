@@ -40,6 +40,8 @@ import {
 } from "@/lib/audio";
 import { useGameAnimation } from "@/hooks/useGameAnimation";
 import { Podium } from "@/components/Podium";
+import { useVoiceChat } from "@/hooks/useVoiceChat";
+import { Mic, MicOff, Volume2, VolumeX } from "lucide-react";
 
 export const Route = createFileRoute("/play/online/$code")({
   head: () => ({ meta: [{ title: "Online Room — Ludo Star" }] }),
@@ -71,6 +73,7 @@ interface RoomRow {
   isQuickMatch?: boolean;
   playerCount?: number;
   readyPlayers?: string[];
+  muted?: Record<string, boolean>;
 }
 interface PlayerRow {
   user_id: string;
@@ -1135,6 +1138,16 @@ function ChatMenu({
   );
 }
 
+const AudioPlayer = ({ stream, muted }: { stream: MediaStream; muted: boolean }) => {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  useEffect(() => {
+    if (audioRef.current && stream) {
+      audioRef.current.srcObject = stream;
+    }
+  }, [stream]);
+  return <audio ref={audioRef} autoPlay muted={muted} className="hidden" />;
+};
+
 function OnlineMatch({
   game,
   room,
@@ -1153,6 +1166,37 @@ function OnlineMatch({
   myFriends,
   navBlocker,
 }: any) {
+  const {
+    localStream,
+    remoteStreams,
+    isMicMuted,
+    toggleMic,
+    error: voiceError,
+  } = useVoiceChat(
+    code,
+    userId,
+    (room?.players || []).map((p: any) => p.user_id)
+  );
+
+  const [localRemoteMuted, setLocalRemoteMuted] = useState<Record<string, boolean>>({});
+
+  const toggleRemoteMute = (pid: string) => {
+    setLocalRemoteMuted((prev) => ({ ...prev, [pid]: !prev[pid] }));
+  };
+
+  useEffect(() => {
+    if (voiceError) {
+      toast.error(voiceError);
+    }
+  }, [voiceError]);
+
+  const toggleMyMic = () => {
+    toggleMic();
+    updateDoc(doc(db, "rooms", code), {
+      [`muted.${userId}`]: !isMicMuted,
+    }).catch(() => {});
+  };
+
   const { animatedGame, isAnimating, killVfx } = useGameAnimation(game);
 
   const displayGame = animatedGame || game;
@@ -1381,6 +1425,9 @@ function OnlineMatch({
     <div
       className={`min-h-screen p-3 md:p-6 relative overflow-hidden ${killVfx?.active ? "animate-shake" : ""}`}
     >
+      {Object.entries(remoteStreams).map(([pid, stream]) => (
+        <AudioPlayer key={pid} stream={stream} muted={!!localRemoteMuted[pid]} />
+      ))}
       <ChatAnimator chats={room.chats} players={room.players || []} profiles={profiles} />
       <ChatMenu
         room={room}
@@ -1474,6 +1521,50 @@ function OnlineMatch({
                         ping={ping}
                         isStale={isStale}
                       />
+                    </div>
+                    {/* Mic Button */}
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 flex gap-2 z-10" dir="ltr">
+                      {p.userId === userId ? (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleMyMic();
+                          }}
+                          className={`p-2 rounded-full backdrop-blur-md border shadow-lg transition-all ${
+                            isMicMuted
+                              ? "bg-red-500/20 border-red-500 text-red-500"
+                              : "bg-green-500/20 border-green-500 text-green-500"
+                          }`}
+                          title={isMicMuted ? "فتح المايك" : "إغلاق المايك"}
+                        >
+                          {isMicMuted ? <MicOff size={16} /> : <Mic size={16} />}
+                        </button>
+                      ) : (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleRemoteMute(p.userId);
+                            }}
+                            className={`p-2 rounded-full backdrop-blur-md border shadow-lg transition-all ${
+                              localRemoteMuted[p.userId]
+                                ? "bg-red-500/20 border-red-500 text-red-500"
+                                : "bg-blue-500/20 border-blue-500 text-blue-500"
+                            }`}
+                            title={localRemoteMuted[p.userId] ? "إلغاء كتم الصوت" : "كتم الصوت لديك"}
+                          >
+                            {localRemoteMuted[p.userId] ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                          </button>
+                          {room.muted?.[p.userId] && (
+                            <div
+                              className="p-2 rounded-full bg-black/40 border border-white/10 text-muted-foreground"
+                              title="اللاعب أغلق المايك"
+                            >
+                              <MicOff size={16} />
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                     {p.userId === userId && !isHost && !isGameOver && (
                       <button
