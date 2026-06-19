@@ -23,6 +23,7 @@ function SettingsPage() {
   const [name, setName] = useState(initial.displayName);
   const [country, setCountry] = useState(initial.country);
   const [avatarId, setAvatarId] = useState(initial.avatarId);
+  const [voiceChatDisabled, setVoiceChatDisabled] = useState(initial.voiceChatDisabled || false);
   const [saved, setSaved] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [stats, setStats] = useState<{ gamesPlayed: number, wins: number, totalPoints: number } | null>(null);
@@ -37,12 +38,14 @@ function SettingsPage() {
           setName(data.display_name || user.displayName || "Player");
           setCountry(data.country || "US");
           setAvatarId(data.avatar_id || user.photoURL || "a1");
+          setVoiceChatDisabled(data.voice_chat_disabled || false);
           setStats(data.stats || { gamesPlayed: 0, wins: 0, totalPoints: 0 });
           
           saveProfile({
             displayName: data.display_name || user.displayName || "Player",
             country: data.country || "US",
             avatarId: data.avatar_id || user.photoURL || "a1",
+            voiceChatDisabled: data.voice_chat_disabled || false,
           });
         } else {
           // Fallback if profile doesn't exist in DB yet (e.g. legacy auth)
@@ -56,11 +59,11 @@ function SettingsPage() {
   }, []);
 
   async function save() {
-    const profile = { displayName: name.trim() || "Player", country, avatarId };
+    const profile = { displayName: name.trim() || "Player", country, avatarId, voiceChatDisabled };
     saveProfile(profile);
     if (userId) {
       await setDoc(doc(db, "profiles", userId), {
-        id: userId, display_name: profile.displayName, country: profile.country, avatar_id: profile.avatarId,
+        id: userId, display_name: profile.displayName, country: profile.country, avatar_id: profile.avatarId, voice_chat_disabled: profile.voiceChatDisabled,
       }, { merge: true });
     }
     setSaved(true);
@@ -141,6 +144,20 @@ function SettingsPage() {
               {COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.flag} {c.name}</option>)}
             </select>
           </div>
+          
+          <div className="flex items-center justify-between bg-secondary/50 p-4 rounded-xl border border-border">
+            <div>
+              <div className="font-medium">إلغاء الدردشة الصوتية بالكامل</div>
+              <div className="text-xs text-muted-foreground mt-1">يمنع المايكروفون تماماً في كل المباريات حفاظاً على الخصوصية. لن يتمكن أحد من سماعك ولن تستطيع فتح المايك داخل اللعبة.</div>
+            </div>
+            <button 
+              onClick={() => setVoiceChatDisabled(!voiceChatDisabled)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${voiceChatDisabled ? 'bg-primary' : 'bg-muted'}`}
+            >
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${voiceChatDisabled ? 'translate-x-6' : 'translate-x-1'}`} />
+            </button>
+          </div>
+
           <div>
             <div className="flex items-center justify-between mb-3">
               <label className="block text-sm font-medium">Avatar</label>

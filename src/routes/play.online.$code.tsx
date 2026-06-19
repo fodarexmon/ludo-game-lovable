@@ -41,6 +41,7 @@ import {
 import { useGameAnimation } from "@/hooks/useGameAnimation";
 import { Podium } from "@/components/Podium";
 import { useVoiceChat } from "@/hooks/useVoiceChat";
+import { loadProfile } from "@/lib/profile";
 import { Mic, MicOff, Volume2, VolumeX } from "lucide-react";
 
 export const Route = createFileRoute("/play/online/$code")({
@@ -1169,14 +1170,18 @@ function OnlineMatch({
   const {
     localStream,
     remoteStreams,
+    speakingPlayers,
     isMicMuted,
     toggleMic,
     error: voiceError,
   } = useVoiceChat(
-    code,
-    userId,
-    (room?.players || []).map((p: any) => p.user_id)
+    room?.id || "",
+    userId || "",
+    (room?.players || []).map((p: any) => p.user_id),
+    !loadProfile().voiceChatDisabled
   );
+
+  const voiceChatDisabled = loadProfile().voiceChatDisabled;
 
   const [localRemoteMuted, setLocalRemoteMuted] = useState<Record<string, boolean>>({});
 
@@ -1456,11 +1461,12 @@ function OnlineMatch({
               state={displayGame}
               onTokenClick={myTurn && !isAnimating ? doMove : undefined}
               killVfx={killVfx}
-              voiceProps={{
+              voiceProps={voiceChatDisabled ? { voiceChatDisabled: true } : {
                 userId,
                 isMicMuted,
                 localRemoteMuted,
                 globalMuted: room.muted || {},
+                speakingPlayers,
                 toggleMyMic,
                 toggleRemoteMute,
               }}

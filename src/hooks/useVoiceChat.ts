@@ -10,9 +10,10 @@ const STUN_SERVERS = {
   ],
 };
 
-export function useVoiceChat(roomId: string, userId: string, peerIds: string[]) {
+export function useVoiceChat(roomId: string, userId: string, peerIds: string[], enabled: boolean = true) {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStreams, setRemoteStreams] = useState<Record<string, MediaStream>>({});
+  const [speakingPlayers, setSpeakingPlayers] = useState<Record<string, boolean>>({});
   const [isMicMuted, setIsMicMuted] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,6 +22,8 @@ export function useVoiceChat(roomId: string, userId: string, peerIds: string[]) 
 
   // Request Microphone access once
   useEffect(() => {
+    if (!enabled) return;
+
     let stream: MediaStream;
     const initMic = async () => {
       try {
@@ -38,11 +41,11 @@ export function useVoiceChat(roomId: string, userId: string, peerIds: string[]) 
         stream.getTracks().forEach((track) => track.stop());
       }
     };
-  }, []);
+  }, [enabled]);
 
   // Handle peers
   useEffect(() => {
-    if (!localStream || !roomId || !userId) return;
+    if (!enabled || !localStream || !roomId || !userId) return;
 
     const activePeers = new Set(peerIds);
 
@@ -152,7 +155,87 @@ export function useVoiceChat(roomId: string, userId: string, peerIds: string[]) 
     return () => {
       unsubs.forEach((u) => u());
     };
-  }, [roomId, userId, peerIds, localStream]);
+  }, [roomId, userId, peerIds, localStream, enabled]);
+
+  // Audio analysis for speaking indicator
+  useEffect(() => {
+    if (!enabled) {
+      setSpeakingPlayers({});
+      return;
+    }
+
+    const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const analysers: Record<string, AnalyserNode> = {};
+    const dataArrays: Record<string, Uint8Array> = {};
+    let animationFrameId: number;
+
+    const setupAnalyser = (id: string, stream: MediaStream) => {
+      if (!stream || stream.getAudioTracks().length === 0) return;
+      const source = audioCtx.createMediaStreamSource(stream);
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 512;
+      analyser.smoothingTimeConstant = 0.4;
+      source.connect(analyser);
+      analysers[id] = analyser;
+      dataArrays[id] = new Uint8Array(analyser.frequencyBinCount);
+    };
+
+    if (localStream && !isMicMuted) {
+      setupAnalyser(userId, localStream);
+    }
+    
+    Object.entries(remoteStreams).forEach(([id, stream]) => {
+      setupAnalyser(id, stream);
+    });
+
+    const checkSpeaking = () => {
+      const newSpeaking: Record<string, boolean> = {};
+      let changed = false;
+
+      Object.keys(analysers).forEach((id) => {
+        const analyser = analysers[id];
+        const dataArray = dataArrays[id];
+        analyser.getByteFrequencyData(dataArray);
+
+        let sum = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+          sum += dataArray[i];
+        }
+        const average = sum / dataArray.length;
+
+        // Threshold for speaking (adjust between 10-30 based on noise)
+        const isSpeakingNow = average > 15;
+        
+        // Only update state if it changed to avoid excessive re-renders
+        // Use a functional approach or check against current state. 
+        // We'll gather all and then set state.
+        newSpeaking[id] = isSpeakingNow;
+      });
+
+      setSpeakingPlayers((prev) => {
+        let isDifferent = false;
+        // Check if new has different values than prev
+        for (const id in newSpeaking) {
+          if (prev[id] !== newSpeaking[id]) isDifferent = true;
+        }
+        for (const id in prev) {
+          if (prev[id] !== newSpeaking[id]) isDifferent = true;
+        }
+        return isDifferent ? newSpeaking : prev;
+      });
+
+      animationFrameId = requestAnimationFrame(checkSpeaking);
+    };
+
+    checkSpeaking();
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+      if (audioCtx.state !== 'closed') {
+        audioCtx.close();
+      }
+    };
+  }, [localStream, remoteStreams, userId, enabled, isMicMuted]);
 
   const toggleMic = useCallback(() => {
     if (localStream) {
@@ -164,5 +247,5 @@ export function useVoiceChat(roomId: string, userId: string, peerIds: string[]) 
     }
   }, [localStream]);
 
-  return { localStream, remoteStreams, isMicMuted, toggleMic, error };
+  return { localStream, remoteStreams, speakingPlayers, isMicMuted, toggleMic, error };
 }

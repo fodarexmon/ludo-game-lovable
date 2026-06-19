@@ -3,9 +3,10 @@ export interface LocalProfile {
   displayName: string;
   country: string;
   avatarId: string;
+  voiceChatDisabled?: boolean;
 }
 const KEY = "ludo:profile";
-const DEFAULT: LocalProfile = { displayName: "Player", country: "US", avatarId: "a1" };
+const DEFAULT: LocalProfile = { displayName: "Player", country: "US", avatarId: "a1", voiceChatDisabled: false };
 
 export function loadProfile(): LocalProfile {
   if (typeof window === "undefined") return DEFAULT;

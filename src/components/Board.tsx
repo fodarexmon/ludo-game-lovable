@@ -16,14 +16,18 @@ function rect(col: number, row: number, fill: string, stroke = "#1f2937", sw = 1
   return <rect key={key} x={col * CELL} y={row * CELL} width={CELL} height={CELL} fill={fill} stroke={stroke} strokeWidth={sw} />;
 }
 
-export interface VoiceProps {
+export type VoiceProps = {
+  voiceChatDisabled: true;
+} | {
+  voiceChatDisabled?: false;
   userId: string;
   isMicMuted: boolean;
   localRemoteMuted: Record<string, boolean>;
   globalMuted: Record<string, boolean>;
+  speakingPlayers: Record<string, boolean>;
   toggleMyMic: () => void;
   toggleRemoteMute: (uid: string) => void;
-}
+};
 
 export function Board({ state, onTokenClick, killVfx, voiceProps }: { state: GameState; onTokenClick?: (seat: number, tokenIdx: number) => void; killVfx?: { active: boolean, position: number | null, color: string | null }; voiceProps?: VoiceProps }) {
   // figure legal moves for current player to highlight
@@ -73,38 +77,53 @@ export function Board({ state, onTokenClick, killVfx, voiceProps }: { state: Gam
                   {player.name}
                 </text>
                 {voiceProps && player.userId && (() => {
+                  // Mic control goes opposite to the name
+                  const micY = y === 0 ? (y + 5.7) * CELL : (y + 0.3) * CELL;
+                  
+                  if (voiceProps.voiceChatDisabled) {
+                    return (
+                      <foreignObject x={(x + 0.5) * CELL} y={micY - CELL * 0.5} width={5 * CELL} height={CELL}>
+                        <div className="w-full h-full flex items-center justify-center gap-1.5" dir="ltr">
+                          <div className="p-2 rounded-full bg-black/80 border border-white/20 text-white/50 shadow-lg" title="المايكروفون مغلق من الإعدادات">
+                            <MicOff size={20} />
+                          </div>
+                        </div>
+                      </foreignObject>
+                    );
+                  }
+
                   const isMe = player.userId === voiceProps.userId;
                   const isLocalMuted = isMe ? voiceProps.isMicMuted : voiceProps.localRemoteMuted[player.userId!];
                   const globalMuted = voiceProps.globalMuted[player.userId!];
-                  // Mic control goes opposite to the name
-                  const micY = y === 0 ? (y + 5.7) * CELL : (y + 0.3) * CELL;
+                  const isSpeaking = voiceProps.speakingPlayers[player.userId!] && !globalMuted && !isLocalMuted;
+
                   return (
                     <foreignObject x={(x + 0.5) * CELL} y={micY - CELL * 0.5} width={5 * CELL} height={CELL}>
-                      <div className="w-full h-full flex items-center justify-center gap-1" dir="ltr" style={{ transform: 'scale(0.8)' }}>
+                      <div className="w-full h-full flex items-center justify-center gap-1.5" dir="ltr">
                         {isMe ? (
                           <button
                             onPointerDown={(e) => { e.stopPropagation(); voiceProps.toggleMyMic(); }}
-                            className={`p-1.5 rounded-full backdrop-blur-md shadow-lg transition-all border ${
+                            className={`relative p-2 rounded-full backdrop-blur-md shadow-lg transition-all border ${
                               voiceProps.isMicMuted ? "bg-red-500/80 border-red-500 text-white" : "bg-green-500/80 border-green-500 text-white"
-                            }`}
+                            } ${isSpeaking ? "ring-4 ring-green-400/50 animate-pulse" : ""}`}
                             title={voiceProps.isMicMuted ? "فتح المايك" : "إغلاق المايك"}
                           >
-                            {voiceProps.isMicMuted ? <MicOff size={16} /> : <Mic size={16} />}
+                            {voiceProps.isMicMuted ? <MicOff size={20} /> : <Mic size={20} />}
                           </button>
                         ) : (
                           <>
                             <button
                               onPointerDown={(e) => { e.stopPropagation(); voiceProps.toggleRemoteMute(player.userId!); }}
-                              className={`p-1.5 rounded-full backdrop-blur-md shadow-lg transition-all border ${
+                              className={`relative p-2 rounded-full backdrop-blur-md shadow-lg transition-all border ${
                                 voiceProps.localRemoteMuted[player.userId!] ? "bg-red-500/80 border-red-500 text-white" : "bg-blue-500/80 border-blue-500 text-white"
-                              }`}
+                              } ${isSpeaking ? "ring-4 ring-blue-400/50 animate-pulse" : ""}`}
                               title={voiceProps.localRemoteMuted[player.userId!] ? "إلغاء كتم الصوت" : "كتم الصوت لديك"}
                             >
-                              {voiceProps.localRemoteMuted[player.userId!] ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                              {voiceProps.localRemoteMuted[player.userId!] ? <VolumeX size={20} /> : <Volume2 size={20} />}
                             </button>
                             {globalMuted && (
-                              <div className="p-1.5 rounded-full bg-black/60 border border-white/20 text-white/70 shadow-lg" title="اللاعب أغلق المايك">
-                                <MicOff size={16} />
+                              <div className="p-2 rounded-full bg-black/60 border border-white/20 text-white/70 shadow-lg" title="اللاعب أغلق المايك">
+                                <MicOff size={20} />
                               </div>
                             )}
                           </>
