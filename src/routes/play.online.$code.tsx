@@ -104,6 +104,7 @@ function RoomPage() {
   const [copied, setCopied] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const writeLock = useRef(false);
+  const lastMeasuredPingRef = useRef(50);
   const hasResignedRef = useRef(false);
 
   const roomRefCurrent = useRef<RoomRow | null>(null);
@@ -249,14 +250,19 @@ function RoomPage() {
   useEffect(() => {
     if (!room || !userId || room.status !== "quick_match_lobby") return;
 
-    const ping = () => {
-      updateDoc(doc(db, "rooms", code), {
-        [`lastActive.${userId}`]: Date.now(),
-      }).catch(() => {});
+    const ping = async () => {
+      const start = Date.now();
+      try {
+        await updateDoc(doc(db, "rooms", code), {
+          [`lastActive.${userId}`]: start,
+          [`pings.${userId}`]: lastMeasuredPingRef.current,
+        });
+        lastMeasuredPingRef.current = Date.now() - start;
+      } catch {}
     };
 
     ping();
-    const interval = setInterval(ping, 5000);
+    const interval = setInterval(ping, 15000);
     return () => clearInterval(interval);
   }, [userId, code, room?.status]);
 
@@ -1217,29 +1223,20 @@ function OnlineMatch({
   useEffect(() => {
     if (!room || !userId || isGameOver) return;
     const measurePing = async () => {
-      let currentPing = 50;
-      if ("connection" in navigator && (navigator as any).connection?.rtt) {
-        currentPing = (navigator as any).connection.rtt;
-      } else {
-        const start = Date.now();
-        try {
-          await fetch("https://www.gstatic.com/generate_204", {
-            mode: "no-cors",
-            cache: "no-store",
-          });
-          currentPing = Date.now() - start;
-        } catch {
-          currentPing = 500;
-        }
+      const start = Date.now();
+      try {
+        await updateDoc(doc(db, "rooms", code), {
+          [`pings.${userId}`]: lastMeasuredPingRef.current,
+          [`lastActive.${userId}`]: start,
+        });
+        lastMeasuredPingRef.current = Date.now() - start;
+      } catch {
+        lastMeasuredPingRef.current = 500;
       }
-      await updateDoc(doc(db, "rooms", code), {
-        [`pings.${userId}`]: currentPing,
-        [`lastActive.${userId}`]: Date.now(),
-      });
     };
 
     measurePing();
-    const interval = setInterval(measurePing, 10000);
+    const interval = setInterval(measurePing, 15000);
     return () => clearInterval(interval);
   }, [userId, code, isGameOver]);
 
