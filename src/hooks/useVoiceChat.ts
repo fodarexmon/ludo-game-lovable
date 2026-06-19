@@ -195,7 +195,7 @@ export function useVoiceChat(roomId: string, userId: string, peerIds: string[], 
       Object.keys(analysers).forEach((id) => {
         const analyser = analysers[id];
         const dataArray = dataArrays[id];
-        analyser.getByteFrequencyData(dataArray);
+        analyser.getByteFrequencyData(dataArray as any);
 
         let sum = 0;
         for (let i = 0; i < dataArray.length; i++) {
