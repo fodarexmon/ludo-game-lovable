@@ -1188,6 +1188,7 @@ function OnlineMatch({
   );
 
   const voiceChatDisabled = loadProfile().voiceChatDisabled;
+  const lastMeasuredPingRef = useRef(50);
 
   const [localRemoteMuted, setLocalRemoteMuted] = useState<Record<string, boolean>>({});
 
