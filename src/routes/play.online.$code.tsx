@@ -1456,6 +1456,14 @@ function OnlineMatch({
               state={displayGame}
               onTokenClick={myTurn && !isAnimating ? doMove : undefined}
               killVfx={killVfx}
+              voiceProps={{
+                userId,
+                isMicMuted,
+                localRemoteMuted,
+                globalMuted: room.muted || {},
+                toggleMyMic,
+                toggleRemoteMute,
+              }}
             />
           </div>
           <div className="space-y-3">
@@ -1521,50 +1529,6 @@ function OnlineMatch({
                         ping={ping}
                         isStale={isStale}
                       />
-                    </div>
-                    {/* Mic Button */}
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 flex gap-2 z-10" dir="ltr">
-                      {p.userId === userId ? (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleMyMic();
-                          }}
-                          className={`p-2 rounded-full backdrop-blur-md border shadow-lg transition-all ${
-                            isMicMuted
-                              ? "bg-red-500/20 border-red-500 text-red-500"
-                              : "bg-green-500/20 border-green-500 text-green-500"
-                          }`}
-                          title={isMicMuted ? "فتح المايك" : "إغلاق المايك"}
-                        >
-                          {isMicMuted ? <MicOff size={16} /> : <Mic size={16} />}
-                        </button>
-                      ) : (
-                        <div className="flex gap-2">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleRemoteMute(p.userId);
-                            }}
-                            className={`p-2 rounded-full backdrop-blur-md border shadow-lg transition-all ${
-                              localRemoteMuted[p.userId]
-                                ? "bg-red-500/20 border-red-500 text-red-500"
-                                : "bg-blue-500/20 border-blue-500 text-blue-500"
-                            }`}
-                            title={localRemoteMuted[p.userId] ? "إلغاء كتم الصوت" : "كتم الصوت لديك"}
-                          >
-                            {localRemoteMuted[p.userId] ? <VolumeX size={16} /> : <Volume2 size={16} />}
-                          </button>
-                          {room.muted?.[p.userId] && (
-                            <div
-                              className="p-2 rounded-full bg-black/40 border border-white/10 text-muted-foreground"
-                              title="اللاعب أغلق المايك"
-                            >
-                              <MicOff size={16} />
-                            </div>
-                          )}
-                        </div>
-                      )}
                     </div>
                     {p.userId === userId && !isHost && !isGameOver && (
                       <button
