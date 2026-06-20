@@ -31,10 +31,12 @@ export function useVoiceChat(roomId: string, userId: string, peerIds: string[], 
     let stream: MediaStream;
     const initMic = async () => {
       try {
+        console.log('[VoiceChat] Requesting microphone access...');
         stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        console.log('[VoiceChat] ✅ Mic access granted, tracks:', stream.getAudioTracks().length);
         setLocalStream(stream);
       } catch (err: any) {
-        console.error("Microphone access denied:", err);
+        console.error('[VoiceChat] ❌ Mic access denied:', err);
         setError("لم نتمكن من الوصول للمايكروفون. يرجى إعطاء الصلاحية.");
       }
     };
@@ -73,16 +75,27 @@ export function useVoiceChat(roomId: string, userId: string, peerIds: string[], 
       if (peerId === userId) return;
       if (peerConnections.current[peerId]) return; // Already connected
 
+      console.log(`[VoiceChat] Creating peer connection for ${peerId}`);
       const pc = new RTCPeerConnection(STUN_SERVERS);
       peerConnections.current[peerId] = pc;
+
+      // Monitor connection state
+      pc.onconnectionstatechange = () => {
+        console.log(`[VoiceChat] Connection state [${peerId}]: ${pc.connectionState}`);
+      };
+      pc.oniceconnectionstatechange = () => {
+        console.log(`[VoiceChat] ICE state [${peerId}]: ${pc.iceConnectionState}`);
+      };
 
       // Add local tracks
       localStream.getTracks().forEach((track) => {
         pc.addTrack(track, localStream);
       });
+      console.log(`[VoiceChat] Added ${localStream.getTracks().length} local tracks to pc for ${peerId}`);
 
       // Listen for remote tracks
       pc.ontrack = (event) => {
+        console.log(`[VoiceChat] ✅ Received remote track from ${peerId}, kind: ${event.track.kind}, streams: ${event.streams.length}, active: ${event.streams[0]?.active}`);
         setRemoteStreams((prev) => ({
           ...prev,
           [peerId]: event.streams[0],

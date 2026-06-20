@@ -1149,11 +1149,22 @@ const AudioPlayer = ({ stream, muted }: { stream: MediaStream; muted: boolean })
   const audioRef = useRef<HTMLAudioElement>(null);
   useEffect(() => {
     if (audioRef.current && stream) {
+      console.log(`[AudioPlayer] Setting stream, active: ${stream.active}, audioTracks: ${stream.getAudioTracks().length}, muted: ${muted}`);
       audioRef.current.srcObject = stream;
-      audioRef.current.play().catch(() => {});
+      audioRef.current.play()
+        .then(() => console.log('[AudioPlayer] ✅ play() succeeded'))
+        .catch((e) => console.error('[AudioPlayer] ❌ play() failed:', e.name, e.message));
     }
   }, [stream]);
-  return <audio ref={audioRef} autoPlay playsInline muted={muted} className="hidden" />;
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.muted = muted;
+    }
+  }, [muted]);
+
+  // Use visibility:hidden instead of className="hidden" (display:none) — some browsers block audio on display:none elements
+  return <audio ref={audioRef} autoPlay playsInline muted={muted} style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }} />;
 };
 
 function OnlineMatch({
