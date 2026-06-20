@@ -10,15 +10,24 @@ const STUN_SERVERS = {
   ],
 };
 
-export function useVoiceChat(roomId: string, userId: string, peerIds: string[], enabled: boolean = true) {
+export function useVoiceChat(roomId: string, userId: string, peerIds: string[], enabled: boolean = true, localRemoteMuted: Record<string, boolean> = {}) {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStreams, setRemoteStreams] = useState<Record<string, MediaStream>>({});
   const [speakingPlayers, setSpeakingPlayers] = useState<Record<string, boolean>>({});
   const [isMicMuted, setIsMicMuted] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // We keep track of peer connections
+  // We keep track of peer connections and audio nodes
   const peerConnections = useRef<Record<string, RTCPeerConnection>>({});
+  const gainNodesRef = useRef<Record<string, GainNode>>({});
+
+  useEffect(() => {
+    Object.entries(localRemoteMuted).forEach(([id, muted]) => {
+      if (gainNodesRef.current[id]) {
+        gainNodesRef.current[id].gain.value = muted ? 0 : 1;
+      }
+    });
+  }, [localRemoteMuted]);
 
   // Request Microphone access once
   useEffect(() => {
@@ -165,6 +174,15 @@ export function useVoiceChat(roomId: string, userId: string, peerIds: string[], 
     }
 
     const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    
+    const resumeAudio = () => {
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    };
+    window.addEventListener('click', resumeAudio);
+    window.addEventListener('touchstart', resumeAudio);
+
     const analysers: Record<string, AnalyserNode> = {};
     const dataArrays: Record<string, Uint8Array> = {};
     let animationFrameId: number;
@@ -172,15 +190,21 @@ export function useVoiceChat(roomId: string, userId: string, peerIds: string[], 
     const setupAnalyser = (id: string, stream: MediaStream) => {
       if (!stream || stream.getAudioTracks().length === 0) return;
       
-      // Clone the stream to prevent Web Audio API from stealing the audio from the <audio> element
-      const clonedStream = new MediaStream();
-      stream.getAudioTracks().forEach(track => clonedStream.addTrack(track.clone()));
-
-      const source = audioCtx.createMediaStreamSource(clonedStream);
+      const source = audioCtx.createMediaStreamSource(stream);
       const analyser = audioCtx.createAnalyser();
       analyser.fftSize = 512;
       analyser.smoothingTimeConstant = 0.4;
       source.connect(analyser);
+
+      // Route remote streams to speakers via Web Audio API to bypass Chrome's audio stealing bug
+      if (id !== userId) {
+        const gainNode = audioCtx.createGain();
+        gainNode.gain.value = localRemoteMuted[id] ? 0 : 1;
+        analyser.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        gainNodesRef.current[id] = gainNode;
+      }
+
       analysers[id] = analyser;
       dataArrays[id] = new Uint8Array(analyser.frequencyBinCount);
     };
@@ -235,6 +259,8 @@ export function useVoiceChat(roomId: string, userId: string, peerIds: string[], 
     checkSpeaking();
 
     return () => {
+      window.removeEventListener('click', resumeAudio);
+      window.removeEventListener('touchstart', resumeAudio);
       cancelAnimationFrame(animationFrameId);
       if (audioCtx.state !== 'closed') {
         audioCtx.close();
