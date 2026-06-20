@@ -1149,11 +1149,8 @@ const AudioPlayer = ({ stream, muted }: { stream: MediaStream; muted: boolean })
   const audioRef = useRef<HTMLAudioElement>(null);
   useEffect(() => {
     if (audioRef.current && stream) {
-      console.log(`[AudioPlayer] Setting stream, active: ${stream.active}, audioTracks: ${stream.getAudioTracks().length}, muted: ${muted}`);
       audioRef.current.srcObject = stream;
-      audioRef.current.play()
-        .then(() => console.log('[AudioPlayer] ✅ play() succeeded'))
-        .catch((e) => console.error('[AudioPlayer] ❌ play() failed:', e.name, e.message));
+      audioRef.current.play().catch(() => {});
     }
   }, [stream]);
 
