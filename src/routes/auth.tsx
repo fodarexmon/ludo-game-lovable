@@ -17,10 +17,10 @@ function AuthPage() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) nav({ to: "/play/online" });
+      if (user && !loading) nav({ to: "/play/online" });
     });
     return () => unsubscribe();
-  }, [nav]);
+  }, [nav, loading]);
 
   async function signInGoogle() {
     setErr(null);
@@ -52,7 +52,8 @@ function AuthPage() {
       saveProfile({
         displayName: profileData.display_name,
         country: profileData.country,
-        avatarId: profileData.avatar_id
+        avatarId: profileData.avatar_id,
+        voiceChatDisabled: profileData.voice_chat_disabled || false
       });
 
       nav({ to: "/play/online" });

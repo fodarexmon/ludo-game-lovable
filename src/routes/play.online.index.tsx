@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { auth, db } from "@/integrations/firebase/client";
 import { doc, getDoc, setDoc, updateDoc, arrayUnion } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
-import { loadProfile } from "@/lib/profile";
+import { loadProfile, saveProfile } from "@/lib/profile";
 
 export const Route = createFileRoute("/play/online/")({
   head: () => ({ meta: [{ title: "Online Ludo — Create or Join a Room" }] }),
@@ -34,14 +34,26 @@ function OnlineLobby() {
   }, [nav]);
 
   async function ensureProfile(uid: string) {
-    const p = loadProfile();
     const profileRef = doc(db, "profiles", uid);
-    await setDoc(profileRef, { 
-      id: uid, 
-      display_name: p.displayName, 
-      country: p.country, 
-      avatar_id: p.avatarId 
-    }, { merge: true });
+    const snap = await getDoc(profileRef);
+    if (snap.exists()) {
+      const data = snap.data();
+      const local = loadProfile();
+      saveProfile({
+        ...local,
+        displayName: data.display_name || local.displayName,
+        country: data.country || local.country,
+        avatarId: data.avatar_id || local.avatarId,
+      });
+    } else {
+      const p = loadProfile();
+      await setDoc(profileRef, { 
+        id: uid, 
+        display_name: p.displayName, 
+        country: p.country, 
+        avatar_id: p.avatarId 
+      }, { merge: true });
+    }
   }
 
   async function createRoom() {
