@@ -1198,7 +1198,7 @@ function OnlineMatch({
     toggleMic,
     error: voiceError,
   } = useVoiceChat(
-    room?.id || "",
+    code,
     userId || "",
     (room?.players || []).map((p: any) => p.user_id),
     !voiceChatDisabled
