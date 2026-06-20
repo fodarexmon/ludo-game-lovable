@@ -170,8 +170,7 @@ function OnlineLobby() {
         const q = query(
           collection(db, "rooms"),
           where("status", "==", "quick_match_lobby"),
-          where("playerCount", "<", 4),
-          limit(5)
+          limit(10)
         );
         const snap = await getDocs(q);
         
@@ -183,10 +182,11 @@ function OnlineLobby() {
           }
         }
         
-        // 2. Return the first room the player is not already in
+        // 2. Return the first room the player is not already in AND has < 4 players
         for (const roomDoc of snap.docs) {
           const room = roomDoc.data();
-          if (!room.players.some((p: any) => p.user_id === user.id)) {
+          const pCount = room.playerCount || room.players?.length || 0;
+          if (pCount < 4 && !room.players.some((p: any) => p.user_id === user.id)) {
             return roomDoc;
           }
         }
