@@ -1145,6 +1145,17 @@ function ChatMenu({
   );
 }
 
+const AudioPlayer = ({ stream, muted }: { stream: MediaStream; muted: boolean }) => {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  useEffect(() => {
+    if (audioRef.current && stream) {
+      audioRef.current.srcObject = stream;
+      audioRef.current.play().catch(() => {});
+    }
+  }, [stream]);
+  return <audio ref={audioRef} autoPlay playsInline muted={muted} className="hidden" />;
+};
+
 function OnlineMatch({
   game,
   room,
@@ -1179,8 +1190,7 @@ function OnlineMatch({
     room?.id || "",
     userId || "",
     (room?.players || []).map((p: any) => p.user_id),
-    !voiceChatDisabled,
-    localRemoteMuted
+    !voiceChatDisabled
   );
 
   const toggleRemoteMute = (pid: string) => {
@@ -1419,6 +1429,9 @@ function OnlineMatch({
     <div
       className={`min-h-screen p-3 md:p-6 relative overflow-hidden ${killVfx?.active ? "animate-shake" : ""}`}
     >
+      {Object.entries(remoteStreams).map(([pid, stream]) => (
+        <AudioPlayer key={pid} stream={stream} muted={!!localRemoteMuted[pid]} />
+      ))}
       <ChatAnimator chats={room.chats} players={room.players || []} profiles={profiles} />
       <ChatMenu
         room={room}

@@ -10,24 +10,15 @@ const STUN_SERVERS = {
   ],
 };
 
-export function useVoiceChat(roomId: string, userId: string, peerIds: string[], enabled: boolean = true, localRemoteMuted: Record<string, boolean> = {}) {
+export function useVoiceChat(roomId: string, userId: string, peerIds: string[], enabled: boolean = true) {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStreams, setRemoteStreams] = useState<Record<string, MediaStream>>({});
   const [speakingPlayers, setSpeakingPlayers] = useState<Record<string, boolean>>({});
   const [isMicMuted, setIsMicMuted] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // We keep track of peer connections and audio nodes
+  // We keep track of peer connections
   const peerConnections = useRef<Record<string, RTCPeerConnection>>({});
-  const gainNodesRef = useRef<Record<string, GainNode>>({});
-
-  useEffect(() => {
-    Object.entries(localRemoteMuted).forEach(([id, muted]) => {
-      if (gainNodesRef.current[id]) {
-        gainNodesRef.current[id].gain.value = muted ? 0 : 1;
-      }
-    });
-  }, [localRemoteMuted]);
 
   // Request Microphone access once
   useEffect(() => {
@@ -196,15 +187,6 @@ export function useVoiceChat(roomId: string, userId: string, peerIds: string[], 
       analyser.smoothingTimeConstant = 0.4;
       source.connect(analyser);
 
-      // Route remote streams to speakers via Web Audio API to bypass Chrome's audio stealing bug
-      if (id !== userId) {
-        const gainNode = audioCtx.createGain();
-        gainNode.gain.value = localRemoteMuted[id] ? 0 : 1;
-        analyser.connect(gainNode);
-        gainNode.connect(audioCtx.destination);
-        gainNodesRef.current[id] = gainNode;
-      }
-
       analysers[id] = analyser;
       dataArrays[id] = new Uint8Array(analyser.frequencyBinCount);
     };
@@ -213,17 +195,16 @@ export function useVoiceChat(roomId: string, userId: string, peerIds: string[], 
       setupAnalyser(userId, localStream);
     }
     
-    Object.entries(remoteStreams).forEach(([id, stream]) => {
-      setupAnalyser(id, stream);
-    });
+    // Remote streams are NOT passed to AudioContext to prevent Chrome from muting them.
+    // Instead, we use getSynchronizationSources() on the peer connections.
 
     const checkSpeaking = () => {
       const newSpeaking: Record<string, boolean> = {};
-      let changed = false;
 
-      Object.keys(analysers).forEach((id) => {
-        const analyser = analysers[id];
-        const dataArray = dataArrays[id];
+      // 1. Check local stream via AudioContext
+      if (analysers[userId] && dataArrays[userId]) {
+        const analyser = analysers[userId];
+        const dataArray = dataArrays[userId];
         analyser.getByteFrequencyData(dataArray as any);
 
         let sum = 0;
@@ -231,14 +212,24 @@ export function useVoiceChat(roomId: string, userId: string, peerIds: string[], 
           sum += dataArray[i];
         }
         const average = sum / dataArray.length;
+        newSpeaking[userId] = average > 15;
+      }
 
-        // Threshold for speaking (adjust between 10-30 based on noise)
-        const isSpeakingNow = average > 15;
-        
-        // Only update state if it changed to avoid excessive re-renders
-        // Use a functional approach or check against current state. 
-        // We'll gather all and then set state.
-        newSpeaking[id] = isSpeakingNow;
+      // 2. Check remote streams via WebRTC getSynchronizationSources
+      Object.entries(peerConnections.current).forEach(([pid, pc]) => {
+        let isSpeakingNow = false;
+        const receivers = pc.getReceivers();
+        receivers.forEach(receiver => {
+          if (receiver.track.kind === "audio" && receiver.getSynchronizationSources) {
+            const sources = receiver.getSynchronizationSources();
+            sources.forEach(source => {
+              if (source.audioLevel !== undefined && source.audioLevel > 0.05) {
+                isSpeakingNow = true;
+              }
+            });
+          }
+        });
+        newSpeaking[pid] = isSpeakingNow;
       });
 
       setSpeakingPlayers((prev) => {
