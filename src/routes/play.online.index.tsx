@@ -174,65 +174,56 @@ function OnlineLobby() {
           limit(5)
         );
         const snap = await getDocs(q);
-        // Return the first room the player is not already in
-        for (const roomDoc of snap.docs) {
-          const room = roomDoc.data();
-          if (!room.players.some((p: any) => p.user_id === user.id)) {
-            return roomDoc;
-          }
-        }
-        // Check if player is already in one of the rooms
+        
+        // 1. Check if player is already in one of the rooms
         for (const roomDoc of snap.docs) {
           const room = roomDoc.data();
           if (room.players.some((p: any) => p.user_id === user.id)) {
             return { alreadyIn: true, code: room.code };
           }
         }
+        
+        // 2. Return the first room the player is not already in
+        for (const roomDoc of snap.docs) {
+          const room = roomDoc.data();
+          if (!room.players.some((p: any) => p.user_id === user.id)) {
+            return roomDoc;
+          }
+        }
         return null;
       };
 
-      // Try up to 3 times with delays to handle race conditions
-      const MAX_RETRIES = 3;
-      const RETRY_DELAY = 1500; // ms
+      const result = await findRoom();
 
-      for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-        const result = await findRoom();
+      // Player is already in a room
+      if (result && 'alreadyIn' in result) {
+        nav({ to: "/play/online/$code", params: { code: result.code } });
+        return;
+      }
 
-        // Player is already in a room
-        if (result && 'alreadyIn' in result) {
-          nav({ to: "/play/online/$code", params: { code: result.code } });
+      // Found a room to join
+      if (result) {
+        const roomDoc = result;
+        const room = roomDoc.data();
+        const taken = new Set(room.players.map((r: any) => r.seat));
+        let seat = 0;
+        while (taken.has(seat)) seat++;
+        const colors = ["red", "green", "yellow", "blue"];
+
+        try {
+          await updateDoc(roomDoc.ref, {
+            players: arrayUnion({ user_id: user.id, seat, color: colors[seat] }),
+            playerCount: increment(1)
+          });
+          nav({ to: "/play/online/$code", params: { code: room.code } });
           return;
-        }
-
-        // Found a room to join
-        if (result) {
-          const roomDoc = result;
-          const room = roomDoc.data();
-          const taken = new Set(room.players.map((r: any) => r.seat));
-          let seat = 0;
-          while (taken.has(seat)) seat++;
-          const colors = ["red", "green", "yellow", "blue"];
-
-          try {
-            await updateDoc(roomDoc.ref, {
-              players: arrayUnion({ user_id: user.id, seat, color: colors[seat] }),
-              playerCount: increment(1)
-            });
-            nav({ to: "/play/online/$code", params: { code: room.code } });
-            return;
-          } catch {
-            // Room might have filled up, retry
-            continue;
-          }
-        }
-
-        // No room found yet — wait before retrying (except on last attempt)
-        if (attempt < MAX_RETRIES - 1) {
-          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+        } catch (err) {
+          console.error("Error joining quick match room:", err);
+          // If it fails, fallback to creating a new one below
         }
       }
 
-      // After all retries, create a new room
+      // Create a new room immediately
       const newCode = "QM" + genCode().substring(0, 4);
       const roomRef = doc(db, "rooms", newCode);
 
