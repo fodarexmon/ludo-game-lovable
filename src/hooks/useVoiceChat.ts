@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { db } from "@/integrations/firebase/client";
 import { doc, onSnapshot, setDoc, updateDoc, arrayUnion } from "firebase/firestore";
 
@@ -16,6 +16,10 @@ export function useVoiceChat(roomId: string, userId: string, peerIds: string[], 
   const [speakingPlayers, setSpeakingPlayers] = useState<Record<string, boolean>>({});
   const [isMicMuted, setIsMicMuted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Stabilize peerIds so the effect only re-runs when the actual list of peers changes
+  const peerIdsKey = useMemo(() => [...peerIds].sort().join(','), [peerIds]);
+  const stablePeerIds = useMemo(() => peerIds, [peerIdsKey]);
 
   // We keep track of peer connections
   const peerConnections = useRef<Record<string, RTCPeerConnection>>({});
@@ -43,11 +47,11 @@ export function useVoiceChat(roomId: string, userId: string, peerIds: string[], 
     };
   }, [enabled]);
 
-  // Handle peers
+  // Handle peers — uses stablePeerIds so connections aren't torn down on every room update
   useEffect(() => {
     if (!enabled || !localStream || !roomId || !userId) return;
 
-    const activePeers = new Set(peerIds);
+    const activePeers = new Set(stablePeerIds);
 
     // Close connections for players who left
     Object.keys(peerConnections.current).forEach((pId) => {
@@ -65,7 +69,7 @@ export function useVoiceChat(roomId: string, userId: string, peerIds: string[], 
     // Create connections for new players
     const unsubs: (() => void)[] = [];
 
-    peerIds.forEach((peerId) => {
+    stablePeerIds.forEach((peerId) => {
       if (peerId === userId) return;
       if (peerConnections.current[peerId]) return; // Already connected
 
@@ -155,7 +159,8 @@ export function useVoiceChat(roomId: string, userId: string, peerIds: string[], 
     return () => {
       unsubs.forEach((u) => u());
     };
-  }, [roomId, userId, peerIds, localStream, enabled]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomId, userId, peerIdsKey, localStream, enabled]);
 
   // Audio analysis for speaking indicator
   useEffect(() => {
