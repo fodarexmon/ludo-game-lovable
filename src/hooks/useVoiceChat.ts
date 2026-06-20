@@ -171,7 +171,12 @@ export function useVoiceChat(roomId: string, userId: string, peerIds: string[], 
 
     const setupAnalyser = (id: string, stream: MediaStream) => {
       if (!stream || stream.getAudioTracks().length === 0) return;
-      const source = audioCtx.createMediaStreamSource(stream);
+      
+      // Clone the stream to prevent Web Audio API from stealing the audio from the <audio> element
+      const clonedStream = new MediaStream();
+      stream.getAudioTracks().forEach(track => clonedStream.addTrack(track.clone()));
+
+      const source = audioCtx.createMediaStreamSource(clonedStream);
       const analyser = audioCtx.createAnalyser();
       analyser.fftSize = 512;
       analyser.smoothingTimeConstant = 0.4;
