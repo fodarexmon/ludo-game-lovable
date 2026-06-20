@@ -163,56 +163,93 @@ function OnlineLobby() {
 
       await ensureProfile(user.id);
 
-      // Find an available quick match room
       const { collection, query, where, getDocs, limit, increment } = await import("firebase/firestore");
-      const q = query(
-        collection(db, "rooms"),
-        where("status", "==", "quick_match_lobby"),
-        where("playerCount", "<", 4),
-        limit(1)
-      );
-      
-      const snap = await getDocs(q);
-      if (!snap.empty) {
-        const roomDoc = snap.docs[0];
-        const room = roomDoc.data();
-        
-        if (room.players.some((p: any) => p.user_id === user.id)) {
-          nav({ to: "/play/online/$code", params: { code: room.code } });
+
+      // Helper: search for an available quick match room
+      const findRoom = async () => {
+        const q = query(
+          collection(db, "rooms"),
+          where("status", "==", "quick_match_lobby"),
+          where("playerCount", "<", 4),
+          limit(5)
+        );
+        const snap = await getDocs(q);
+        // Return the first room the player is not already in
+        for (const roomDoc of snap.docs) {
+          const room = roomDoc.data();
+          if (!room.players.some((p: any) => p.user_id === user.id)) {
+            return roomDoc;
+          }
+        }
+        // Check if player is already in one of the rooms
+        for (const roomDoc of snap.docs) {
+          const room = roomDoc.data();
+          if (room.players.some((p: any) => p.user_id === user.id)) {
+            return { alreadyIn: true, code: room.code };
+          }
+        }
+        return null;
+      };
+
+      // Try up to 3 times with delays to handle race conditions
+      const MAX_RETRIES = 3;
+      const RETRY_DELAY = 1500; // ms
+
+      for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+        const result = await findRoom();
+
+        // Player is already in a room
+        if (result && 'alreadyIn' in result) {
+          nav({ to: "/play/online/$code", params: { code: result.code } });
           return;
         }
-        
-        const taken = new Set(room.players.map((r: any) => r.seat));
-        let seat = 0;
-        while (taken.has(seat)) seat++;
-        const colors = ["red", "green", "yellow", "blue"];
-        
-        await updateDoc(roomDoc.ref, {
-          players: arrayUnion({ user_id: user.id, seat, color: colors[seat] }),
-          playerCount: increment(1)
-        });
-        
-        nav({ to: "/play/online/$code", params: { code: room.code } });
-      } else {
-        // Create new quick match room
-        const newCode = "QM" + genCode().substring(0, 4);
-        const roomRef = doc(db, "rooms", newCode);
-        
-        await setDoc(roomRef, {
-          code: newCode,
-          host_id: user.id,
-          status: "quick_match_lobby",
-          isQuickMatch: true,
-          playerCount: 1,
-          state: {},
-          players: [{ user_id: user.id, seat: 0, color: "red" }],
-          readyPlayers: [],
-          matchCount: 1,
-          scores: {}
-        });
-        
-        nav({ to: "/play/online/$code", params: { code: newCode } });
+
+        // Found a room to join
+        if (result) {
+          const roomDoc = result;
+          const room = roomDoc.data();
+          const taken = new Set(room.players.map((r: any) => r.seat));
+          let seat = 0;
+          while (taken.has(seat)) seat++;
+          const colors = ["red", "green", "yellow", "blue"];
+
+          try {
+            await updateDoc(roomDoc.ref, {
+              players: arrayUnion({ user_id: user.id, seat, color: colors[seat] }),
+              playerCount: increment(1)
+            });
+            nav({ to: "/play/online/$code", params: { code: room.code } });
+            return;
+          } catch {
+            // Room might have filled up, retry
+            continue;
+          }
+        }
+
+        // No room found yet — wait before retrying (except on last attempt)
+        if (attempt < MAX_RETRIES - 1) {
+          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+        }
       }
+
+      // After all retries, create a new room
+      const newCode = "QM" + genCode().substring(0, 4);
+      const roomRef = doc(db, "rooms", newCode);
+
+      await setDoc(roomRef, {
+        code: newCode,
+        host_id: user.id,
+        status: "quick_match_lobby",
+        isQuickMatch: true,
+        playerCount: 1,
+        state: {},
+        players: [{ user_id: user.id, seat: 0, color: "red" }],
+        readyPlayers: [],
+        matchCount: 1,
+        scores: {}
+      });
+
+      nav({ to: "/play/online/$code", params: { code: newCode } });
     } catch (e: any) {
       console.error(e);
       setErr("Could not join quick match. Please try again.");
