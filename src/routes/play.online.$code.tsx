@@ -103,8 +103,6 @@ function RoomPage() {
   const [rolling, setRolling] = useState(false);
   const [copied, setCopied] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const writeLock = useRef(false);
-  const lastMeasuredPingRef = useRef(50);
   const hasResignedRef = useRef(false);
 
   const roomRefCurrent = useRef<RoomRow | null>(null);
@@ -245,26 +243,6 @@ function RoomPage() {
       }
     }
   }, [room?.status, room?.readyPlayers?.length, players.length]);
-
-  // Measure Ping in Lobby
-  useEffect(() => {
-    if (!room || !userId || room.status !== "quick_match_lobby") return;
-
-    const ping = async () => {
-      const start = Date.now();
-      try {
-        await updateDoc(doc(db, "rooms", code), {
-          [`lastActive.${userId}`]: start,
-          [`pings.${userId}`]: lastMeasuredPingRef.current,
-        });
-        lastMeasuredPingRef.current = Date.now() - start;
-      } catch {}
-    };
-
-    ping();
-    const interval = setInterval(ping, 15000);
-    return () => clearInterval(interval);
-  }, [userId, code, room?.status]);
 
   // Sweep offline players in Quick Match Lobby
   useEffect(() => {
@@ -433,15 +411,13 @@ function RoomPage() {
   }
 
   async function pushState(newState: GameState, status?: string, additionalRoomUpdates?: any) {
-    if (!room || writeLock.current) return;
-    writeLock.current = true;
+    if (!room) return;
     try {
       const upd: any = { state: newState as any, ...additionalRoomUpdates };
       if (status) upd.status = status;
       await updateDoc(doc(db, "rooms", code), upd);
-      setRoom((r) => (r ? { ...r, ...upd, state: newState, status: status ?? r.status } : r));
-    } finally {
-      writeLock.current = false;
+    } catch (e) {
+      console.error("pushState failed:", e);
     }
   }
 
@@ -507,40 +483,35 @@ function RoomPage() {
   async function doRoll() {
     if (!game || mySeat !== game.turn || rolling) return;
     setRolling(true);
+    playRollSound();
 
     const d = rollDice();
     const next = recordRoll(game, d);
 
-    playRollSound();
+    // Brief delay for local dice animation, then push ONCE
+    await new Promise((r) => setTimeout(r, 600));
+    setRolling(false);
 
-    const intermediate = { ...game, dice: d, awaitingMove: false, sixCount: game.sixCount };
-    await handleStateChange(intermediate);
-
-    const waitTime = next.dice === null ? 500 : 200;
-
-    setTimeout(async () => {
-      setRolling(false);
-
-      if (next.dice === null) {
-        await handleStateChange(next);
-      } else {
-        const moves = legalMoves(next, d);
-        let autoMoveIdx = -1;
-        if (moves.length === 1) {
-          autoMoveIdx = moves[0];
-        } else if (moves.length > 1) {
-          const positions = moves.map((t) => next.tokens[next.turn][t]);
-          if (positions.every((p) => p === positions[0])) autoMoveIdx = moves[0];
-        }
-
-        if (autoMoveIdx >= 0) {
-          const finalState = applyMove(next, autoMoveIdx);
-          await handleStateChange(finalState);
-        } else {
-          await handleStateChange(next);
-        }
+    if (next.dice === null) {
+      // No legal moves — turn passes automatically
+      await handleStateChange(next);
+    } else {
+      const moves = legalMoves(next, d);
+      let autoMoveIdx = -1;
+      if (moves.length === 1) {
+        autoMoveIdx = moves[0];
+      } else if (moves.length > 1) {
+        const positions = moves.map((t) => next.tokens[next.turn][t]);
+        if (positions.every((p) => p === positions[0])) autoMoveIdx = moves[0];
       }
-    }, waitTime);
+
+      if (autoMoveIdx >= 0) {
+        const finalState = applyMove(next, autoMoveIdx);
+        await handleStateChange(finalState);
+      } else {
+        await handleStateChange(next);
+      }
+    }
   }
   async function doMove(_seat: number, tokenIdx: number) {
     if (!game || mySeat !== game.turn) return;
@@ -551,29 +522,34 @@ function RoomPage() {
   // Auto-play timer (Host only)
   useEffect(() => {
     if (!room || !isHost || room.status !== "playing" || !game) return;
-    const isGameOver = gameOver(game);
-    if (isGameOver) return;
+    const isOver = gameOver(game);
+    if (isOver) return;
 
     const checkTimer = async () => {
-      if (writeLock.current) return;
       const elapsed = Date.now() - game.turnStartTime;
       if (elapsed >= 60000) {
         if (!game.dice && !game.awaitingMove) {
+          // Player didn't roll in time — auto-roll
           const d = rollDice();
           await handleStateChange(recordRoll(game, d));
         } else if (game.awaitingMove && game.dice) {
+          // Player didn't pick a token — auto-move
           const t = chooseMove(game, game.dice!);
           if (t >= 0) {
             await handleStateChange(applyMove(game, t));
           } else {
-            const fallback = applyMove(game, 0);
-            await handleStateChange(fallback).catch(() => {});
+            try { await handleStateChange(applyMove(game, 0)); } catch {}
           }
+        } else if (game.dice && !game.awaitingMove) {
+          // STUCK: dice set but not awaiting move — force re-roll to recover
+          const d = rollDice();
+          const recovered = recordRoll({ ...game, dice: null, awaitingMove: false }, d);
+          await handleStateChange(recovered);
         }
       }
     };
 
-    const interval = setInterval(checkTimer, 1000);
+    const interval = setInterval(checkTimer, 2000);
     return () => clearInterval(interval);
   }, [game, room, isHost]);
 
@@ -1183,7 +1159,6 @@ function OnlineMatch({
   navBlocker,
 }: any) {
   const voiceChatDisabled = loadProfile().voiceChatDisabled;
-  const lastMeasuredPingRef = useRef(50);
 
   const [localRemoteMuted, setLocalRemoteMuted] = useState<Record<string, boolean>>({});
 
@@ -1230,73 +1205,7 @@ function OnlineMatch({
     myTurn && !game.dice && !game.awaitingMove && !isAnimating && !isGameOver && !rolling;
   const [showResignConfirm, setShowResignConfirm] = useState(false);
 
-  useEffect(() => {
-    if (!room || !userId || isGameOver) return;
-    const measurePing = async () => {
-      const start = Date.now();
-      try {
-        await updateDoc(doc(db, "rooms", code), {
-          [`pings.${userId}`]: lastMeasuredPingRef.current,
-          [`lastActive.${userId}`]: start,
-        });
-        lastMeasuredPingRef.current = Date.now() - start;
-      } catch {
-        lastMeasuredPingRef.current = 500;
-      }
-    };
-
-    measurePing();
-    const interval = setInterval(measurePing, 15000);
-    return () => clearInterval(interval);
-  }, [userId, code, isGameOver]);
-
   const players = room?.players || [];
-  const lastActiveRef = useRef<Record<string, number>>({});
-  const lastSeenRef = useRef<Record<string, number>>({});
-  const [offlinePlayers, setOfflinePlayers] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    if (!room?.lastActive) return;
-    const now = Date.now();
-    players.forEach((p: any) => {
-      const pLastActive = room.lastActive[p.user_id];
-      if (pLastActive !== lastActiveRef.current[p.user_id]) {
-        lastActiveRef.current[p.user_id] = pLastActive;
-        lastSeenRef.current[p.user_id] = now;
-      }
-    });
-  }, [room?.lastActive, players]);
-
-  useEffect(() => {
-    if (isGameOver) return;
-    const interval = setInterval(() => {
-      const now = Date.now();
-      const currentOffline = new Set<string>();
-      players.forEach((p: any) => {
-        if (p.user_id === userId) return;
-        const lastSeen = lastSeenRef.current[p.user_id];
-        // If haven't seen an update in 20 seconds, mark as disconnected
-        if (lastSeen && now - lastSeen > 20000) {
-          currentOffline.add(p.user_id);
-        }
-      });
-
-      setOfflinePlayers((prev) => {
-        currentOffline.forEach((id) => {
-          if (!prev.has(id)) {
-            toast.error(`🔌 ${profiles[id]?.display_name || "Player"} disconnected`);
-          }
-        });
-        prev.forEach((id) => {
-          if (!currentOffline.has(id)) {
-            toast.success(`⚡ ${profiles[id]?.display_name || "Player"} reconnected`);
-          }
-        });
-        return currentOffline;
-      });
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [players, profiles, userId, isGameOver]);
 
   const prevDice = useRef<number | null>(null);
   useEffect(() => {
@@ -1521,8 +1430,6 @@ function OnlineMatch({
               {displayGame.players.map((p: any, i: number) => {
                 if (p.hasResigned) return null;
                 const prof = profiles?.[p.userId];
-                const ping = room.pings?.[p.userId];
-                const isStale = offlinePlayers.has(p.userId);
                 return (
                   <div key={i} className="relative">
                     <div
@@ -1539,8 +1446,6 @@ function OnlineMatch({
                         player={p}
                         active={i === displayGame.turn && !isGameOver}
                         finishedCount={finishedCount(i)}
-                        ping={ping}
-                        isStale={isStale}
                       />
                     </div>
                     {p.userId === userId && !isHost && !isGameOver && (
