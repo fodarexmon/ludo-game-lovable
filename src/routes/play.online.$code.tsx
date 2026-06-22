@@ -249,41 +249,6 @@ function RoomPage() {
     }
   }, [room?.status, room?.readyPlayers?.length, players.length]);
 
-  // Sweep offline players in Quick Match Lobby
-  useEffect(() => {
-    if (!room || room.status !== "quick_match_lobby" || !players.length) return;
-
-    const interval = setInterval(() => {
-      const now = Date.now();
-      const offlineThreshold = 15000;
-      let hasChanges = false;
-      const activePlayers = players.filter((p) => {
-        const last = room.lastActive?.[p.user_id];
-        if (!last) return true; // if no lastActive yet, keep them
-        if (now - last > offlineThreshold) {
-          hasChanges = true;
-          return false;
-        }
-        return true;
-      });
-
-      // Only let the first active player do the update to prevent race conditions
-      const firstActiveId = activePlayers[0]?.user_id;
-      if (hasChanges && firstActiveId === userId) {
-        const updates: any = {
-          players: activePlayers,
-          playerCount: activePlayers.length,
-        };
-        if (room.readyPlayers) {
-          updates.readyPlayers = room.readyPlayers.filter((id) =>
-            activePlayers.some((p) => p.user_id === id)
-          );
-        }
-        updateDoc(doc(db, "rooms", code), updates).catch(() => {});
-      }
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [room, players, userId, code]);
 
   const game: GameState | null =
     room?.status === "playing" || room?.status === "finished" ? (room.state as GameState) : null;

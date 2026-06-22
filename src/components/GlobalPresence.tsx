@@ -55,7 +55,7 @@ export function GlobalPresence() {
         };
 
         updatePresence();
-        const intervalId = setInterval(updatePresence, 30000);
+        const intervalId = setInterval(updatePresence, 300000); // every 5 minutes
 
         // Listen for incoming invites
         const invitesRef = collection(db, `profiles/${user.uid}/invites`);

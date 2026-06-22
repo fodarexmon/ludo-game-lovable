@@ -35,6 +35,7 @@ function FriendsPage() {
       });
 
       const friendsRef = collection(db, `profiles/${user.uid}/friends`);
+      const knownFriendIds: string[] = [];
       const unsub = onSnapshot(friendsRef, async (snap) => {
         const friendIds = snap.docs.map(d => d.id);
         if (friendIds.length === 0) {
@@ -43,21 +44,30 @@ function FriendsPage() {
           return;
         }
         
-        // Fetch profiles for friends to get online status
-        // Note: In a large app we'd paginate or chunk this, but for a simple game it's fine
-        const chunks = [];
-        for (let i = 0; i < friendIds.length; i += 10) {
-          chunks.push(friendIds.slice(i, i + 10));
+        // Only fetch profiles for friends we haven't loaded yet
+        const newIds = friendIds.filter(id => !knownFriendIds.includes(id));
+        if (newIds.length > 0) {
+          knownFriendIds.push(...newIds);
+          const chunks = [];
+          for (let i = 0; i < friendIds.length; i += 10) {
+            chunks.push(friendIds.slice(i, i + 10));
+          }
+          let fetched: any[] = [];
+          for (const chunk of chunks) {
+            const q = query(collection(db, "profiles"), where("id", "in", chunk));
+            const pSnap = await getDocs(q);
+            pSnap.forEach(d => fetched.push({ id: d.id, ...d.data() }));
+          }
+          setFriends(prev => {
+            const existingIds = new Set(prev.map(f => f.id));
+            const merged = [...prev, ...fetched.filter(f => !existingIds.has(f.id))];
+            // Remove friends who are no longer in the list
+            return merged.filter(f => friendIds.includes(f.id));
+          });
+        } else {
+          // No new friends — just remove any who were deleted
+          setFriends(prev => prev.filter(f => friendIds.includes(f.id)));
         }
-        
-        let allFriends: any[] = [];
-        for (const chunk of chunks) {
-          const q = query(collection(db, "profiles"), where("id", "in", chunk));
-          const pSnap = await getDocs(q);
-          pSnap.forEach(d => allFriends.push({ id: d.id, ...d.data() }));
-        }
-        
-        setFriends(allFriends);
         setLoading(false);
       });
       
