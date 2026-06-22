@@ -104,6 +104,7 @@ function RoomPage() {
   const [copied, setCopied] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const hasResignedRef = useRef(false);
+  const timerBusyRef = useRef(false);
 
   const roomRefCurrent = useRef<RoomRow | null>(null);
   const playersRefCurrent = useRef<PlayerRow[]>([]);
@@ -208,30 +209,30 @@ function RoomPage() {
     if (!userId) return;
 
     const roomRef = doc(db, "rooms", code);
+    const knownProfileIdsRef: string[] = [];
     const unsub = onSnapshot(roomRef, async (docSnap) => {
       if (!docSnap.exists()) {
         setErr("Room not found");
         return;
       }
       const r = docSnap.data() as RoomRow;
-      if (r.status === "playing" && r.state) {
-        const g = r.state as any;
-        toast.info(`[SNAP] turn=${g.turn} dice=${g.dice} await=${g.awaitingMove}`, { duration: 3000 });
-      }
       setRoom(r);
 
       const pl = r.players || [];
       setPlayers(pl);
 
+      // Only fetch profiles for player IDs we haven't fetched yet
       const ids = pl.map((p) => p.user_id);
-      if (ids.length) {
+      const newIds = ids.filter((id) => !knownProfileIdsRef.includes(id));
+      if (newIds.length) {
+        knownProfileIdsRef.push(...newIds);
         const q = query(collection(db, "profiles"), where("id", "in", ids));
         const profSnap = await getDocs(q);
         const m: Record<string, ProfileRow> = {};
         profSnap.forEach((d) => {
           m[d.id] = d.data() as ProfileRow;
         });
-        setProfiles(m);
+        setProfiles((prev) => ({ ...prev, ...m }));
       }
     });
 
@@ -417,14 +418,12 @@ function RoomPage() {
   async function pushState(newState: GameState, status?: string, additionalRoomUpdates?: any) {
     if (!room) return;
     try {
-      toast.info(`[PUSH] turn=${newState.turn} dice=${newState.dice} await=${newState.awaitingMove}`, { duration: 3000 });
       const upd: any = { state: newState as any, ...additionalRoomUpdates };
       if (status) upd.status = status;
       await updateDoc(doc(db, "rooms", code), upd);
-      toast.success(`[PUSH OK]`, { duration: 2000 });
     } catch (e: any) {
-      toast.error(`[PUSH FAIL] ${e?.message || e}`, { duration: 10000 });
-      console.error("pushState failed:", e);
+      console.error("pushState failed:", e?.code, e?.message);
+      throw e;
     }
   }
 
@@ -488,17 +487,12 @@ function RoomPage() {
   }
 
   async function doRoll() {
-    if (!game || mySeat !== game.turn || rolling) {
-      toast.error(`[ROLL BLOCKED] game=${!!game} mySeat=${mySeat} turn=${game?.turn} rolling=${rolling}`, { duration: 5000 });
-      return;
-    }
+    if (!game || mySeat !== game.turn || rolling) return;
     setRolling(true);
     playRollSound();
 
     const d = rollDice();
     const next = recordRoll(game, d);
-
-    toast.info(`[ROLL] dice=${d} next.dice=${next.dice} next.turn=${next.turn} next.await=${next.awaitingMove}`, { duration: 5000 });
 
     // Brief delay for local dice animation, then push ONCE
     await new Promise((r) => setTimeout(r, 600));
@@ -506,7 +500,6 @@ function RoomPage() {
 
     if (next.dice === null) {
       // No legal moves — turn passes automatically
-      toast.info(`[ROLL] No moves, passing turn`, { duration: 3000 });
       await handleStateChange(next);
     } else {
       const moves = legalMoves(next, d);
@@ -519,15 +512,12 @@ function RoomPage() {
       }
 
       if (autoMoveIdx >= 0) {
-        toast.info(`[ROLL] Auto-move token ${autoMoveIdx}`, { duration: 3000 });
         const finalState = applyMove(next, autoMoveIdx);
         await handleStateChange(finalState);
       } else {
-        toast.info(`[ROLL] Awaiting player choice, ${moves.length} moves`, { duration: 3000 });
         await handleStateChange(next);
       }
     }
-    toast.success(`[ROLL DONE]`, { duration: 2000 });
   }
   async function doMove(_seat: number, tokenIdx: number) {
     if (!game || mySeat !== game.turn) return;
@@ -535,16 +525,19 @@ function RoomPage() {
     await handleStateChange(next);
   }
 
-  // Auto-play timer (Host only)
+  // Auto-play timer (Host only) — uses isBusy flag to prevent write storms
   useEffect(() => {
     if (!room || !isHost || room.status !== "playing" || !game) return;
-    const isOver = gameOver(game);
-    if (isOver) return;
+    if (gameOver(game)) return;
 
     const checkTimer = async () => {
+      // Prevent concurrent executions
+      if (timerBusyRef.current) return;
       const elapsed = Date.now() - game.turnStartTime;
-      if (elapsed >= 60000) {
-        toast.warning(`[TIMER] 60s elapsed. dice=${game.dice} await=${game.awaitingMove} turn=${game.turn}`, { duration: 5000 });
+      if (elapsed < 60000) return;
+
+      timerBusyRef.current = true;
+      try {
         if (!game.dice && !game.awaitingMove) {
           // Player didn't roll in time — auto-roll
           const d = rollDice();
@@ -552,22 +545,21 @@ function RoomPage() {
         } else if (game.awaitingMove && game.dice) {
           // Player didn't pick a token — auto-move
           const t = chooseMove(game, game.dice!);
-          if (t >= 0) {
-            await handleStateChange(applyMove(game, t));
-          } else {
-            try { await handleStateChange(applyMove(game, 0)); } catch {}
-          }
+          const moveIdx = t >= 0 ? t : 0;
+          await handleStateChange(applyMove(game, moveIdx));
         } else if (game.dice && !game.awaitingMove) {
-          // STUCK: dice set but not awaiting move — force re-roll to recover
-          toast.error(`[TIMER] STUCK STATE detected, recovering...`, { duration: 5000 });
+          // STUCK: dice visible but no action possible — reset turn
           const d = rollDice();
-          const recovered = recordRoll({ ...game, dice: null, awaitingMove: false }, d);
-          await handleStateChange(recovered);
+          await handleStateChange(recordRoll({ ...game, dice: null, awaitingMove: false }, d));
         }
+      } catch (e) {
+        console.error("[TIMER] checkTimer failed:", e);
+      } finally {
+        timerBusyRef.current = false;
       }
     };
 
-    const interval = setInterval(checkTimer, 2000);
+    const interval = setInterval(checkTimer, 3000);
     return () => clearInterval(interval);
   }, [game, room, isHost]);
 
