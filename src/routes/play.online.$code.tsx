@@ -490,16 +490,22 @@ function RoomPage() {
     await handleStateChange(next);
   }
 
-  // Auto-play timer (Host only) — uses isBusy flag to prevent write storms
+  // Auto-play timer — executed by Host (at 60s), or by other players with a staggered delay if Host is offline
   useEffect(() => {
-    if (!room || !isHost || room.status !== "playing" || !game) return;
+    if (!room || room.status !== "playing" || !game) return;
     if (gameOver(game)) return;
 
     const checkTimer = async () => {
+      if (mySeat === -1 && !isHost) return; // Spectators don't run the timer
       // Prevent concurrent executions
       if (timerBusyRef.current) return;
       const elapsed = Date.now() - game.turnStartTime;
-      if (elapsed < 60000) return;
+      
+      // Host fires at 60s. If host is dead/disconnected, Seat 0 fires at 62s, Seat 1 at 64s, etc.
+      // This prevents the game from getting stuck at 0 forever.
+      const delay = isHost ? 60000 : 60000 + ((mySeat + 1) * 2000);
+      
+      if (elapsed < delay) return;
 
       timerBusyRef.current = true;
       try {
@@ -526,7 +532,7 @@ function RoomPage() {
 
     const interval = setInterval(checkTimer, 3000);
     return () => clearInterval(interval);
-  }, [game, room, isHost]);
+  }, [game, room, isHost, mySeat]);
 
   function copyCode() {
     if (navigator.clipboard && window.isSecureContext) {
