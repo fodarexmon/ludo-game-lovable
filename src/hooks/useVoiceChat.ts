@@ -109,8 +109,6 @@ export function useVoiceChat(roomId: string, userId: string, peerIds: string[], 
         }
       };
 
-      let hasAnswered = false;
-
       // Signaling logic
       const setupSignaling = async () => {
         if (isCaller) {
@@ -124,16 +122,11 @@ export function useVoiceChat(roomId: string, userId: string, peerIds: string[], 
           if (!data) return;
 
           // Answerer processes the offer
-          if (!isCaller && data.offer && pc.signalingState === "stable" && !hasAnswered) {
-            hasAnswered = true;
-            try {
-              await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
-              const answer = await pc.createAnswer();
-              await pc.setLocalDescription(answer);
-              await updateDoc(signalDoc, { answer: { type: answer.type, sdp: answer.sdp } });
-            } catch (e) {
-              console.error("WebRTC Error setting answer:", e);
-            }
+          if (!isCaller && data.offer && pc.signalingState === "stable") {
+            await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            await updateDoc(signalDoc, { answer: { type: answer.type, sdp: answer.sdp } });
           }
 
           // Caller processes the answer
