@@ -19,6 +19,7 @@ export interface GameState {
   tokens: Record<number, number[]>;
   turn: number;               // current seat index (into players)
   dice: number | null;        // current roll, null = needs to roll
+  lastDiceRolled?: number;    // last rolled value, kept for UI display to other players
   sixCount: number;           // consecutive sixes by current player
   awaitingMove: boolean;      // dice rolled, waiting for token move
   winners: number[];          // seat indexes that finished normally, in finish order

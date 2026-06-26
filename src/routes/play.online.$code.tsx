@@ -1395,7 +1395,7 @@ function OnlineMatch({
                 </div>
               </div>
               <div className="mt-4 flex items-center justify-between">
-                <Dice value={displayGame.dice} rolling={false} size={72} />
+                <Dice value={displayGame.dice ?? displayGame.lastDiceRolled ?? null} rolling={false} size={72} />
                 <button onClick={doRoll} disabled={!canRoll} className="btn-game">
                   {rolling
                     ? "..."

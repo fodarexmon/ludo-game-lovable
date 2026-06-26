@@ -215,7 +215,7 @@ function Match({ game, setGame, onExit }: { game: GameState; setGame: (g: GameSt
                 </div>
               </div>
               <div className="mt-4 flex items-center justify-between">
-                <Dice value={displayGame.dice} rolling={rolling} size={72} />
+                <Dice value={displayGame.dice ?? displayGame.lastDiceRolled ?? null} rolling={rolling} size={72} />
                 <button onClick={doRoll} disabled={!canRoll || currentPlayer.kind === "ai"} className="btn-game">
                   {rolling ? "..." : game.awaitingMove ? "Choose token" : "Roll dice"}
                 </button>

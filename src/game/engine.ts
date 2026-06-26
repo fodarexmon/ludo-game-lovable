@@ -121,6 +121,7 @@ export function applyMove(state: GameState, tokenIdx: number): GameState {
 export function recordRoll(state: GameState, dice: number): GameState {
   const s: GameState = JSON.parse(JSON.stringify(state));
   s.dice = dice;
+  s.lastDiceRolled = dice;
   if (dice === 6) {
     s.sixCount += 1;
     if (s.sixCount === 3) {
