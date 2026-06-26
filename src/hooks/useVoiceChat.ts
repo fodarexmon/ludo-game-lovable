@@ -111,6 +111,8 @@ export function useVoiceChat(roomId: string, userId: string, peerIds: string[], 
 
       // Signaling logic
       const setupSignaling = async () => {
+        let lastProcessedOfferSDP = "";
+
         if (isCaller) {
           const offer = await pc.createOffer();
           await pc.setLocalDescription(offer);
@@ -122,7 +124,8 @@ export function useVoiceChat(roomId: string, userId: string, peerIds: string[], 
           if (!data) return;
 
           // Answerer processes the offer
-          if (!isCaller && data.offer && pc.signalingState === "stable") {
+          if (!isCaller && data.offer && pc.signalingState === "stable" && lastProcessedOfferSDP !== data.offer.sdp) {
+            lastProcessedOfferSDP = data.offer.sdp;
             await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
